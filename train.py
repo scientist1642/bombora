@@ -1,6 +1,8 @@
 import math
 import os
 import sys
+import resource 
+import gc
 
 import torch
 import torch.nn.functional as F
@@ -9,14 +11,15 @@ from envs import create_atari_env
 from model import ActorCritic
 from torch.autograd import Variable
 from torchvision import datasets, transforms
+from utils import logger
 
+logger = logger.getLogger('main')
 
 def ensure_shared_grads(model, shared_model):
     for param, shared_param in zip(model.parameters(), shared_model.parameters()):
         if shared_param.grad is not None:
             return
         shared_param._grad = param.grad
-
 
 def train(rank, args, shared_model, optimizer=None):
     torch.manual_seed(args.seed + rank)
@@ -36,8 +39,29 @@ def train(rank, args, shared_model, optimizer=None):
     done = True
 
     episode_length = 0
+
+    iteration = 0 
+    
     while True:
+
+        values = []
+        log_probs = []
+        rewards = []
+        entropies = []
+        
+        if iteration == args.max_iters:
+            logger.info('Max iteration {} reached..'.format(args.max_iters))
+            break
+
+        if iteration % 200 == 0 and rank == 0:
+            mem_used = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) 
+            mem_used_mb = mem_used / 1024 
+            logger.info('Memory usage of one proc: {} (mb)'.format(mem_used_mb))
+
+
+        iteration += 1
         episode_length += 1
+
         # Sync with the shared model
         model.load_state_dict(shared_model.state_dict())
         if done:
@@ -47,10 +71,6 @@ def train(rank, args, shared_model, optimizer=None):
             cx = Variable(cx.data)
             hx = Variable(hx.data)
 
-        values = []
-        log_probs = []
-        rewards = []
-        entropies = []
 
         for step in range(args.num_steps):
             value, logit, (hx, cx) = model(

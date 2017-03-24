@@ -11,7 +11,9 @@ from torch.autograd import Variable
 from torchvision import datasets, transforms
 import time
 from collections import deque
+from utils import logger
 
+logger = logger.getLogger('test')
 
 def test(rank, args, shared_model):
     torch.manual_seed(args.seed + rank)
@@ -59,7 +61,7 @@ def test(rank, args, shared_model):
             done = True
 
         if done:
-            print("Time {}, episode reward {}, episode length {}".format(
+            logger.info("Time {}, episode reward {}, episode length {}".format(
                 time.strftime("%Hh %Mm %Ss",
                               time.gmtime(time.time() - start_time)),
                 reward_sum, episode_length))

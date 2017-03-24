@@ -3,6 +3,7 @@ from __future__ import print_function
 import argparse
 import os
 import sys
+import math
 
 import torch
 import torch.optim as optim
@@ -13,7 +14,10 @@ from envs import create_atari_env
 from model import ActorCritic
 from train import train
 from test import test
+from utils import logger
 import my_optim
+
+logger = logger.getLogger('main')
 
 # Based on
 # https://github.com/pytorch/examples/tree/master/mnist_hogwild
@@ -37,13 +41,16 @@ parser.add_argument('--env-name', default='PongDeterministic-v3', metavar='ENV',
                     help='environment to train on (default: PongDeterministic-v3)')
 parser.add_argument('--no-shared', default=False, metavar='O',
                     help='use an optimizer without shared momentum.')
+parser.add_argument('--max-iters', type=int, default=math.inf,
+                    help='maximum iterations per process.')
 
+parser.add_argument('--debug', action='store_true', default=False,
+                    help='run in a way its easier to debug')
 
 if __name__ == '__main__':
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
-
     env = create_atari_env(args.env_name)
     shared_model = ActorCritic(
         env.observation_space.shape[0], env.action_space)
@@ -55,15 +62,19 @@ if __name__ == '__main__':
         optimizer = my_optim.SharedAdam(shared_model.parameters(), lr=args.lr)
         optimizer.share_memory()
 
-    processes = []
+    
+    if not args.debug:
+        processes = []
 
-    p = mp.Process(target=test, args=(args.num_processes, args, shared_model))
-    p.start()
-    processes.append(p)
-
-    for rank in range(0, args.num_processes):
-        p = mp.Process(target=train, args=(rank, args, shared_model, optimizer))
+        p = mp.Process(target=test, args=(args.num_processes, args, shared_model))
         p.start()
         processes.append(p)
-    for p in processes:
-        p.join()
+        for rank in range(0, args.num_processes):
+            p = mp.Process(target=train, args=(rank, args, shared_model, optimizer))
+            p.start()
+            processes.append(p)
+        for p in processes:
+            p.join()
+    else: ## debug is enabled
+        # run only one process in a main, easier to debug
+        train(0, args, shared_model, optimizer)
