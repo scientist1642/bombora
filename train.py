@@ -1,12 +1,11 @@
 import math
 import os
 import sys
-import resource 
-import gc
 
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+
 from envs import create_atari_env
 from model import ActorCritic
 from torch.autograd import Variable
@@ -21,7 +20,7 @@ def ensure_shared_grads(model, shared_model):
             return
         shared_param._grad = param.grad
 
-def train(rank, args, shared_model, optimizer=None):
+def train(rank, args, shared_model, gl_step_count, optimizer=None):
     torch.manual_seed(args.seed + rank)
 
     env = create_atari_env(args.env_name)
@@ -39,8 +38,7 @@ def train(rank, args, shared_model, optimizer=None):
     done = True
 
     episode_length = 0
-
-    iteration = 0 
+    episode_count = 0 
     
     while True:
 
@@ -49,17 +47,11 @@ def train(rank, args, shared_model, optimizer=None):
         rewards = []
         entropies = []
         
-        if iteration == args.max_iters:
-            logger.info('Max iteration {} reached..'.format(args.max_iters))
+        if episode_count == args.max_episode_count:
+            logger.info('Maxiumum episode count {} reached..'.format(args.max_episode_count))
+            # TODO make sure if no train process is running test.py closes  as well
             break
 
-        if iteration % 200 == 0 and rank == 0:
-            mem_used = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) 
-            mem_used_mb = mem_used / 1024 
-            logger.info('Memory usage of one proc: {} (mb)'.format(mem_used_mb))
-
-
-        iteration += 1
         episode_length += 1
 
         # Sync with the shared model
@@ -89,6 +81,7 @@ def train(rank, args, shared_model, optimizer=None):
 
             if done:
                 episode_length = 0
+                episode_count += 1
                 state = env.reset()
 
             state = torch.from_numpy(state)
@@ -98,6 +91,9 @@ def train(rank, args, shared_model, optimizer=None):
 
             if done:
                 break
+
+        # increment global step count
+        gl_step_count.increment_by(step)
 
         R = torch.zeros(1, 1)
         if not done:

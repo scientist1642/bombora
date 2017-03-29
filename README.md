@@ -22,6 +22,12 @@ Install most recent nightly build (version '0.1.10+2fd4d08' or later) of PyTorch
 pip install git+https://github.com/pytorch/pytorch
 `
 
+## Dependencies
+   * pytorch
+   * torchvision
+   * universe (for now)
+   * [tensorboard logger](https://github.com/TeamHG-Memex/tensorboard_logger)
+
 ## Results
 
 With 16 processes it converges for PongDeterministic-v3 in 15 minutes.
