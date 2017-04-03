@@ -4,12 +4,19 @@ from gym.spaces.box import Box
 import cv2
 
 # Taken from https://github.com/openai/universe-starter-agent
-def create_atari_env(env_id):
+def create_atari_env42(env_id):
     env = gym.make(env_id)
-    env = MyAtariRescale42x42(env)
+    box = Box(0.0, 1.0, [1, 42, 42])
+    env = MyAtariRescale(env, _process_frame42, box)
     env = MyNormalizedEnv(env)
     return env
 
+def create_atari_env84(env_id):
+    env = gym.make(env_id)
+    box = Box(0.0, 1.0, [1, 84, 84])
+    env = MyAtariRescale(env, _process_frame84, box)
+    env = MyNormalizedEnv(env)
+    return env
 
 def _process_frame42(frame):
     frame = frame[34:34 + 160, :160]
@@ -21,17 +28,25 @@ def _process_frame42(frame):
     frame = frame.mean(2)
     frame = frame.astype(np.float32)
     frame *= (1.0 / 255.0)
-    #frame = np.reshape(frame, [1, 42, 42])
     return frame
 
-class MyAtariRescale42x42(gym.ObservationWrapper):
+def _process_frame84(frame):
+    frame = frame[34:34 + 160, :160]
+    frame = cv2.resize(frame, (84, 84))
+    frame = frame.mean(2)
+    frame = frame.astype(np.float32)
+    frame *= (1.0 / 255.0)
+    return frame
 
-    def __init__(self, env=None):
-        super(MyAtariRescale42x42, self).__init__(env)
-        self.observation_space = Box(0.0, 1.0, [1, 42, 42])
+class MyAtariRescale(gym.ObservationWrapper):
+
+    def __init__(self, env, pre_fun, box):
+        super(MyAtariRescale, self).__init__(env)
+        self.observation_space = box
+        self.preprocess = pre_fun
 
     def _observation(self, observation):
-        return _process_frame42(observation) 
+        return self.preprocess(observation) 
 
 class MyNormalizedEnv(gym.ObservationWrapper):
 

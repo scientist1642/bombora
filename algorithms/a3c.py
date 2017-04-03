@@ -6,13 +6,12 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-from envs import create_atari_env
-from model import ActorCritic
+
 from torch.autograd import Variable
 from torchvision import datasets, transforms
 from utils import logger
 
-logger = logger.getLogger('main')
+logger = logger.getLogger(__name__)
 
 def ensure_shared_grads(model, shared_model):
     for param, shared_param in zip(model.parameters(), shared_model.parameters()):
@@ -20,13 +19,13 @@ def ensure_shared_grads(model, shared_model):
             return
         shared_param._grad = param.grad
 
-def train(rank, args, shared_model, gl_step_count, optimizer=None):
+def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=None):
     torch.manual_seed(args.seed + rank)
 
-    env = create_atari_env(args.env_name)
+    env = make_env()
     env.seed(args.seed + rank)
 
-    model = ActorCritic(env.observation_space.shape[0], env.action_space)
+    model = Model(env.observation_space.shape[0], env.action_space)
 
     if optimizer is None:
         optimizer = optim.Adam(shared_model.parameters(), lr=args.lr)

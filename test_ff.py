@@ -43,14 +43,8 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
         # Sync with the shared model
         if done:
             model.load_state_dict(shared_model.state_dict())
-            cx = Variable(torch.zeros(1, 256), volatile=True)
-            hx = Variable(torch.zeros(1, 256), volatile=True)
-        else:
-            cx = Variable(cx.data, volatile=True)
-            hx = Variable(hx.data, volatile=True)
 
-        value, logit, (hx, cx) = model(
-            (Variable(state.unsqueeze(0), volatile=True), (hx, cx)))
+        value, logit  = model(Variable(state.unsqueeze(0), volatile=True))
         prob = F.softmax(logit)
         action = prob.max(1)[1].data.numpy()
 

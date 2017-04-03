@@ -3,7 +3,6 @@ import os
 import logging
 import logging.config
 
-
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 LOGGING = {
     'version': 1,
@@ -40,10 +39,7 @@ LOGGING = {
         },
     }
 }
-
-
 logging.config.dictConfig(LOGGING)
 
 def getLogger(name):
-
     return logging.getLogger(name)
