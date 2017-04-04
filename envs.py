@@ -13,9 +13,11 @@ def create_atari_env42(env_id):
 
 def create_atari_env84(env_id):
     env = gym.make(env_id)
-    box = Box(0.0, 1.0, [1, 84, 84])
+    box = Box(0.0, 1.0, [4, 84, 84])
     env = MyAtariRescale(env, _process_frame84, box)
     env = MyNormalizedEnv(env)
+    # also stack last 4 non skipped frames
+    env = MyStackedFrames(env)
     return env
 
 def _process_frame42(frame):
@@ -37,6 +39,21 @@ def _process_frame84(frame):
     frame = frame.astype(np.float32)
     frame *= (1.0 / 255.0)
     return frame
+
+class MyStackedFrames(gym.Wrapper):
+    def __init__(self, env):
+        super(MyStackedFrames, self).__init__(env)
+
+    def _reset(self):
+        observation = self.env.reset()
+        self.stacked_observ = [observation] * 4
+        return np.vstack(self.stacked_observ)
+
+    def _step(self, action):
+        observation, reward, done, info = self.env.step(action)
+        self.stacked_observ = self.stacked_observ[1:] + [observation]
+        return np.vstack(self.stacked_observ), reward, done, info
+
 
 class MyAtariRescale(gym.ObservationWrapper):
 

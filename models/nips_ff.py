@@ -35,7 +35,6 @@ class ActorCritic(torch.nn.Module):
 
     def __init__(self, num_inputs, action_space):
         super(ActorCritic, self).__init__()
-        #TODO stack 4 frames
         self.conv1 = nn.Conv2d(num_inputs, 16, 8, stride=4, padding=4)
         self.conv2 = nn.Conv2d(16, 32, 4, stride=2, padding=2)
 
@@ -55,7 +54,6 @@ class ActorCritic(torch.nn.Module):
         self.train()
 
     def forward(self, inputs):
-        #import ipdb; ipdb.set_trace()
         #inputs, (hx, cx) = inputs
         x = F.elu(self.conv1(inputs))
         x = F.elu(self.conv2(x))
