@@ -22,6 +22,13 @@ This code runs evaluation in a separate thread in addition to 16 processes.
 
 Note:
 Pytorch is still in beta and non recent version might have some problem.
+### Results
+___
+It seems "a3cff" has problem with slightly harder games as of now.
+(no_universe is a label for LSTM)
+##### Pong
+![](images/pongD_5dae352.png)
+![](images/breakoutD_5dae352.png)
 
 ### Credits
 
