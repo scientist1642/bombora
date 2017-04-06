@@ -49,7 +49,7 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
             #env.seed(args.seed + rank)
             rec_dir = os.path.join(args.checkpoint_video_dir, 'step_'+human_format(global_step_count))
             env = wrappers.Monitor(env, rec_dir, 
-                    video_callable=lambda x: True, write_upon_reset=False, mode='training')
+                    video_callable=lambda x: True, write_upon_reset=False)
             last_recorded_at = global_step_count
             recording = True
         
@@ -87,8 +87,8 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
         avg_reward = np.average(episode_rewards)
         std_reward = np.std(episode_rewards)
         avg_length = np.average(episode_lengths)
-        logger.info("Avg episode reward {}, avg episode length {}".format(
-            avg_reward, avg_length))
+        logger.info("GL step {}, Avg episode reward {}, avg episode length {}".format(
+            global_step_count, avg_reward, avg_length))
         tb.log_value('steps_second', global_step_count / passed_time, global_step_count) 
         tb.log_value('reward', episode_rewards[0], global_step_count) 
         tb.log_value('avg_reward', avg_reward, global_step_count) 
