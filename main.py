@@ -51,20 +51,31 @@ parser.add_argument('--short-description', default='no_descr',
                     help='Short description of the run params, (used in tensorboard)')
 parser.add_argument('--algo', default='a3c', dest='algo', action='store', choices=['a3c', 'a3cff'],
                     help='Algorithm to use')
+parser.add_argument('--num-test-episodes', type=int, default=5, 
+                    help='number of test episodes to run')
+parser.add_argument('--rec-every-nsteps', type=int, default=500000,
+                    help='number of step intervals between recording a video played episodes')
 
 def setup_loggings(args):
     ''' Setup python logging and tensorboard logging '''
     logger.debug('CONFIGURATION: {}'.format(args))
     
-    cur_path = os.path.dirname(os.path.realpath(__file__))
-    args.summ_base_dir = (cur_path+'/runs/{}/{}({})').format(args.env_name, 
-            time.strftime('%d.%m-%H.%M'), args.short_description)
-    logger.info('logging run logs to {}'.format(args.summ_base_dir))
-    tb.configure(args.summ_base_dir)
+    main_dir = os.path.dirname(os.path.realpath(__file__))
+    run_name = os.path.join(args.env_name, '{}({})'.format(time.strftime('%d.%m-%H.%M'),
+            args.short_description))
+    tboard_log_dir = os.path.join(main_dir, 'runs', run_name)
+    checkpoint_video_dir = os.path.join(main_dir, 'checkpoints', run_name)
+    
+    args.tboard_log_dir = tboard_log_dir
+    args.checkpoint_video_dir = checkpoint_video_dir
+    logger.info('logging tensorboard graphs to {}'.format(tboard_log_dir))
+    logger.info('logging video checkpoints to {}'.format(checkpoint_video_dir))
+    tb.configure(tboard_log_dir)
 
 def get_functions(args):
     ''' based on alg type return tuple of train/test functionsm model and env factory '''
     #TODO not very cool refactor later
+    #TODO add make_model 
     if args.algo == 'a3c':
         from algorithms import a3c
         from models import actorcritic
@@ -123,4 +134,7 @@ if __name__ == '__main__':
             p.join()
     else: ## debug is enabled
         # run only one process in a main, easier to debug
+        args.max_episode_count = 0 # test both train and debug
         train(0, args, shared_model, Model, make_env, shared_stepcount, optimizer)
+        test(args.num_processes, args, shared_model, Model, make_env, shared_stepcount)
+

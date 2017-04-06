@@ -12,6 +12,13 @@ OMP_NUM_THREADS=1 python main.py --env-name "PongDeterministic-v3" --algo a3c --
 
 This code runs evaluation in a separate thread in addition to 16 processes.
 
+Now you can run tensorboard and watch it training.
+
+```
+tensorboard --logdir runs
+```
+
+Videos of a game is also saved every `--rec-every-nsteps`, you can check them in `checkpoints` directory.
 
 
 ### Dependencies
