@@ -14,11 +14,13 @@ from gym import wrappers
 from torch.autograd import Variable
 from torchvision import datasets, transforms
 from utils import logger
+from utils.dblogger import DBLogger
 from utils.misc import human_format
 
 logger = logger.getLogger(__name__)
 
 def test(rank, args, shared_model, Model, make_env, shared_stepcount):
+    dblogger = DBLogger(args.db_path)
     torch.manual_seed(args.seed + rank)
     #import ipdb; ipdb.set_trace()
 
@@ -47,7 +49,7 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
             env.close() # close current env
             env = make_env()
             #env.seed(args.seed + rank)
-            rec_dir = os.path.join(args.checkpoint_video_dir, 'step_'+human_format(global_step_count))
+            rec_dir = os.path.join(args.checkpoint_dir, 'step_'+human_format(global_step_count))
             env = wrappers.Monitor(env, rec_dir, 
                     video_callable=lambda x: True, write_upon_reset=False)
             last_recorded_at = global_step_count
@@ -93,5 +95,6 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
         tb.log_value('reward', episode_rewards[0], global_step_count) 
         tb.log_value('avg_reward', avg_reward, global_step_count) 
         tb.log_value('std_reward', std_reward, global_step_count) 
+        dblogger.info_reward(global_step_count, avg_reward, std_reward)
        
         time.sleep(60) # wait for a while
