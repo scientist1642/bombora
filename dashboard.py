@@ -101,6 +101,7 @@ class Dashboard:
 
     def _plot_simple_test(self, data, db, viz, wins):
         # =================== Average Reward Plot ============== 
+        print ('Starting simple plot')
         x = np.array([data.glsteps])
         y = np.array([data.avgscore])
         if not 'scores' in wins:
@@ -109,11 +110,13 @@ class Dashboard:
             wins['scores'] = win
         else:
             viz.updateTrace(X=x,Y=y,win=wins['scores'])
+        
+        print ('Done simple plot')
 
 
 
     def _plot_heavy_test(self, data, db, viz, wins):
-        print('Started plotting heavy plot')
+        print('Started heavy plot')
         step = human_format(data.glsteps)
         video_title = 'Step: {}, Score: {}'.format(step,data.score)
         #viz.video(videofile=data.video, ispath=False, extension='mp4', 
@@ -157,15 +160,15 @@ class Dashboard:
                 rect.set_height(h)
 
             return (stateimg, convimg, predline)
-        
         predline = matplotlib.lines.Line2D([],[], color='red')
         ax2.add_line(predline)
         stateimg = ax1.imshow(state_frames[0],animated=True)
         convimg = ax4.imshow(randconv_frames[0],animated=True, cmap='gray')
         num_actions = action_distr.shape[1]
         rects = ax3.bar(range(num_actions), [0]*num_actions) #align='center'
-        #import ipdb; ipdb.set_trace()
-        ani = animation.FuncAnimation(fig, update, state_frames.shape[0], 
+        
+        TO_RENDER= min(800, state_frames.shape[0])
+        ani = animation.FuncAnimation(fig, update, TO_RENDER, 
                 fargs=(state_frames,randconv_frames, predvalues, rects, 
                     stateimg, convimg, predline,
                     action_distr), interval=50, blit=True)
@@ -214,12 +217,15 @@ if __name__ == '__main__':
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         #prog = subprocess.Popen('python -m visdom.server', shell=True, preexec_fn = preexec_function)
         time.sleep(1)
-        if len(sys.argv) == 2:
-            runlist = [sys.argv[1]]
+        if len(sys.argv) != 1:
+            # running server
+            dbdir = sys.argv[1]
+            #runlist = [sys.argv[1]]
+            runlist = None
         else:
             runlist = None
 
-        dashboard = Dashboard(runlist=runlist)
+        dashboard = Dashboard(dbdir=dbdir)
         dashboard.start()
     except KeyboardInterrupt:
         print ('keyInterrupted')

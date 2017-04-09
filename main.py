@@ -51,9 +51,9 @@ parser.add_argument('--short-description', default='no_descr',
                     help='Short description of the run params used for name')
 parser.add_argument('--algo', default='a3c', dest='algo', action='store', choices=['a3c', 'a3cff'],
                     help='Algorithm to use')
-parser.add_argument('--num-test-episodes', type=int, default=2, 
+parser.add_argument('--num-test-episodes', type=int, default=3, 
                     help='number of simple test episodes to run')
-parser.add_argument('--test-heavy-gap', type=int, default=10,
+parser.add_argument('--test-heavy-gap', type=int, default=30,
                     help='with every nth simple test, heavy test will be performed')
 
 def setup_loggings(args):
