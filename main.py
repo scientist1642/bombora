@@ -12,7 +12,7 @@ import torch.optim as optim
 import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.functional as F
-import tensorboard_logger as tb
+#import tensorboard_logger as tb
 
 
 from utils import logger
@@ -33,7 +33,7 @@ parser.add_argument('--tau', type=float, default=1.00, metavar='T',
                     help='parameter for GAE (default: 1.00)')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
-parser.add_argument('--num-processes', type=int, default=4, metavar='N',
+parser.add_argument('--num-processes', type=int, default=3, metavar='N',
                     help='how many training processes to use (default: 4)')
 parser.add_argument('--num-steps', type=int, default=20, metavar='NS',
                     help='number of forward steps in A3C (default: 20)')
@@ -43,39 +43,48 @@ parser.add_argument('--env-name', default='PongDeterministic-v3', metavar='ENV',
                     help='environment to train on (default: PongDeterministic-v3)')
 parser.add_argument('--no-shared', default=False, metavar='O',
                     help='use an optimizer without shared momentum.')
-parser.add_argument('--max-episode-count', type=int, default=math.inf,
-                    help='maximum number of episodes to run per process.')
+parser.add_argument('--max-step-count', type=int, default=int(2e9),
+                    help='maximum number of steps to run')
 parser.add_argument('--debug', action='store_true', default=False,
                     help='run in a way its easier to debug')
 parser.add_argument('--short-description', default='no_descr',
-                    help='Short description of the run params, (used in tensorboard)')
+                    help='Short description of the run params used for name')
 parser.add_argument('--algo', default='a3c', dest='algo', action='store', choices=['a3c', 'a3cff'],
                     help='Algorithm to use')
-parser.add_argument('--num-test-episodes', type=int, default=5, 
-                    help='number of test episodes to run')
-parser.add_argument('--rec-every-nsteps', type=int, default=500000,
-                    help='number of step intervals between recording a video played episodes')
+parser.add_argument('--num-test-episodes', type=int, default=2, 
+                    help='number of simple test episodes to run')
+parser.add_argument('--test-heavy-gap', type=int, default=10,
+                    help='with every nth simple test, heavy test will be performed')
 
 def setup_loggings(args):
-    ''' Setup python logging and tensorboard logging '''
+    ''' Setup python logging, tboard logging and dblogging '''
     logger.debug('CONFIGURATION: {}'.format(args))
     
     main_dir = os.path.dirname(os.path.realpath(__file__))
-    run_name = os.path.join(args.env_name, '{}({})'.format(time.strftime('%d.%m-%H.%M'),
-            args.short_description))
-    tboard_log_dir = os.path.join(main_dir, 'runs', run_name)
-    checkpoint_dir = os.path.join(main_dir, 'checkpoints', run_name)
-    if not os.path.exists(checkpoint_dir):
-        os.makedirs(checkpoint_dir)
+    run_stamp = '{}({})'.format(time.strftime('%d.%m-%H.%M'), args.short_description)
+    run_title = args.env_name + '_' + run_stamp
+    args.run_title = run_title
+    run_dir = os.path.join(args.env_name, run_stamp)
     
-    args.tboard_log_dir = tboard_log_dir
-    args.checkpoint_dir = checkpoint_dir
-    args.run_name = run_name
-    args.db_path = os.path.join(args.checkpoint_dir,'log.sqlite3')
+    # dir for tensorboard logs (tboard might be removed later)
+    #tboard_log_dir = os.path.join(main_dir, 'runs', run_dir)
+    #args.tboard_log_dir = tboard_log_dir
+    
+    # dir for temp folders
+    temp_dir = os.path.join(main_dir, 'dblogs', 'tempdir') 
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+    args.temp_dir = temp_dir
+
+    #dir for sqlite log dbs
+    db_dir = os.path.join(main_dir, 'dblogs', args.env_name)
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir)
+    args.db_path = os.path.join(db_dir, run_title + '.sqlite3')
+    
     logger.info('db log path is {}'.format(args.db_path))
-    logger.info('logging tensorboard graphs to {}'.format(tboard_log_dir))
-    logger.info('loggingcheckpoints to {}'.format(checkpoint_dir))
-    tb.configure(tboard_log_dir)
+    #logger.info('logging tensorboard graphs to {}'.format(tboard_log_dir))
+    #tb.configure(tboard_log_dir)
 
 def get_functions(args):
     ''' based on alg type return tuple of train/test functionsm model and env factory '''
@@ -139,7 +148,8 @@ if __name__ == '__main__':
             p.join()
     else: ## debug is enabled
         # run only one process in a main, easier to debug
-        args.max_episode_count = 1 # test both train and debug
+        args.max_step_count = 1000 # test both train and debug
         train(0, args, shared_model, Model, make_env, shared_stepcount, optimizer)
+        args.max_step_count += 1000 # needed to perform test
         test(args.num_processes, args, shared_model, Model, make_env, shared_stepcount)
 

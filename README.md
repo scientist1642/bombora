@@ -25,6 +25,7 @@ Videos of a game is also saved every `--rec-every-nsteps`, you can check them in
    * pytorch
    * torchvision
    * gym
+   * sqlite3
    * [tensorboard logger](https://github.com/TeamHG-Memex/tensorboard_logger)
 
 Note:

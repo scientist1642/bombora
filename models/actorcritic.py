@@ -59,14 +59,20 @@ class ActorCritic(torch.nn.Module):
 
         self.train()
 
-    def forward(self, inputs):
+    def forward(self, inputs, req_params=None):
+        # if requested params is list they will be returned as well 
         inputs, (hx, cx) = inputs
-        x = F.elu(self.conv1(inputs))
-        x = F.elu(self.conv2(x))
+        conv1_out = F.elu(self.conv1(inputs))
+        x = F.elu(self.conv2(conv1_out))
         x = F.elu(self.conv3(x))
         x = F.elu(self.conv4(x))
         x = x.view(-1, 32 * 3 * 3)
         hx, cx = self.lstm(x, (hx, cx))
         x = hx
+        
+        # quick hardcode req_params
+        if req_params is None or 'conv1_out' not in req_params:
+            return self.critic_linear(x), self.actor_linear(x), (hx, cx)
+        else:
+            return self.critic_linear(x), self.actor_linear(x), (hx, cx, conv1_out)
 
-        return self.critic_linear(x), self.actor_linear(x), (hx, cx)

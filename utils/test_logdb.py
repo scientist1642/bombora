@@ -20,17 +20,16 @@ def producer():
 def consumer():
     cc = LogDB('temp', role='consumer')
     while True:
-        try:
-            item = next(cc)
+        for item in cc:
             unp_item = pickle.loads(item[1])
             print ('Reading {}'.format(unp_item))
-        except StopIteration:
-            time.sleep(0.5)
+        time.sleep(0.5)
 
 if __name__ == '__main__':
     ps = [Process(target=producer), Process(target=consumer)]
-    for p in ps:
-        p.start()
+    ps[0].start()
+    time.sleep(0.5)
+    ps[1].start()
     for p in ps:
         p.join()
     

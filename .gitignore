@@ -11,6 +11,7 @@ __pycache__/
 runs/
 checkpoints/
 results/
+dblogs/
 
 #other
 .DS_Store   
