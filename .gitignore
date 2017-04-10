@@ -12,7 +12,7 @@ runs/
 checkpoints/
 results/
 dblogs/
-dblogs-server/
+dblogs_server/
 
 #other
 .DS_Store   

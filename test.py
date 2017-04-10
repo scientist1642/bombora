@@ -57,7 +57,7 @@ def test_heavy(args, model, make_env,  glsteps, dblogger):
         eplength += 1
         epstates.append(state)
         epvalues.append(value.data.numpy()[0,0])
-        action_distr.append(logit.data.numpy()[0])
+        action_distr.append(prob.data.numpy()[0])
         
         state = torch.from_numpy(state)
         

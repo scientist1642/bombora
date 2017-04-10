@@ -48,7 +48,7 @@ class Dashboard:
        Protocol V1 of dblogger
     '''
 
-    def __init__(self, dbdir='dblogs/PongDeterministic-v3', runlist=None, 
+    def __init__(self, dbdir='dblogs', runlist=None, 
             interval = 10):
         '''
         dbdir: specifies where to look for sqlite log files,
@@ -60,15 +60,24 @@ class Dashboard:
         self.runlist = runlist
         self.interval = interval
         
-        # find all sqlite files
+        # go through each requested env folder, find all sqlite files, take last one
         if self.runlist is None:
             # find all sqlite files, and add latest [1]created db TODO add option
-            tmp = []
-            for f in os.listdir(dbdir):
-                if f.endswith(".sqlite3"):
-                    tmp.append((os.path.getctime(os.path.join(dbdir, f)), f))
-            latestrun = max(tmp)[1]
-            self.runlist = [latestrun]
+            self.runlist = []
+            for env_name in ['Seaquest-v0', 'Breakout-v0']:
+                tmp = []
+                envdbdir = os.path.join(dbdir, env_name)
+                for f in os.listdir(envdbdir):
+                    if f.endswith(".sqlite3"):
+                        fullpath = os.path.join(dbdir, env_name, f)
+                        tmp.append((os.path.getctime(fullpath), fullpath, f))
+                latestrun = max(tmp)[1]
+                self.runlist.append((f, fullpath)) # run name and path to db
+
+        print('Detected following db logs')
+        for name, fullpath in self.runlist:
+            print ('name : {}, path: {}'.format(name, fullpath))
+        print('=============================')
    
     def _update_env(self, db, viz, wins):
         ''' update visdom for specific env,
@@ -134,7 +143,7 @@ class Dashboard:
         
         # create figs axis and some fine tuning
         fig,((ax4,ax2),(ax3,ax1)) = plt.subplots(2, 2, figsize=(6, 6), dpi=80)
-        fig.subplots_adjust(left=0.01, bottom=0.01, right=0.99, top=0.99, wspace=0.05, hspace=0.05)
+        fig.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.05, hspace=0.05)
         plt.setp(ax1.get_xticklabels(), visible=False)
         plt.setp(ax1.get_yticklabels(), visible=False)
         plt.setp(ax2.get_xticklabels(), visible=False)
@@ -189,8 +198,8 @@ class Dashboard:
     def start(self):
         # make list of db, vizs, windows triplets
         self.db_env_wins = []
-        for runname in self.runlist:
-            db = dblogging.DBReader(os.path.join(self.dbdir, runname))
+        for (runname,runpath) in self.runlist:
+            db = dblogging.DBReader(os.path.join(runpath))
             viz = Visdom(env = runname)
             
             # setup windows in the env
@@ -223,6 +232,7 @@ if __name__ == '__main__':
             #runlist = [sys.argv[1]]
             runlist = None
         else:
+            dbdir = 'dblogs'
             runlist = None
 
         dashboard = Dashboard(dbdir=dbdir)
