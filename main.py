@@ -53,8 +53,10 @@ parser.add_argument('--algo', default='a3c', dest='algo', action='store', choice
                     help='Algorithm to use')
 parser.add_argument('--num-test-episodes', type=int, default=3, 
                     help='number of simple test episodes to run')
-parser.add_argument('--test-heavy-gap', type=int, default=30,
-                    help='with every nth simple test, heavy test will be performed')
+parser.add_argument('--test-simple-every', type=int, default=2,
+                    help='intervals in minutes beteween simple test')
+parser.add_argument('--test-heavy-every', type=int, default=30,
+                    help='intervals in minutes beteween heavy test')
 
 def setup_loggings(args):
     ''' Setup python logging, tboard logging and dblogging '''

@@ -73,9 +73,7 @@ def test_heavy(args, model, make_env,  glsteps, dblogger):
     
     shutil.rmtree(recdir) 
     
-    #import ipdb; ipdb.set_trace()
     # do All the dblogging
-    
     data = {'evtname':'HeavyTest',
             'test_duration':time.time() - test_start_time,
             'video':video_bytestr,
@@ -133,10 +131,6 @@ def test_simple(args, model, env, glsteps, dblogger, start_time):
 
     # Do Db loggings
     passed_time = time.time() - start_time
-   
-
-
-
 
     data = {'evtname':'SimpleTest',
             'glsteps': glsteps,
@@ -148,6 +142,7 @@ def test_simple(args, model, env, glsteps, dblogger, start_time):
 
     dblogger.log(data)
 
+    logger.info('Finished simple test on step {}'.format(glsteps))
 
 def test(rank, args, shared_model, Model, make_env, shared_stepcount):
     torch.manual_seed(args.seed + rank)
@@ -166,7 +161,6 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
     #recording = False
     
     while True:
-        testnum += 1
         glsteps = shared_stepcount.get_value()
         # sync with the shared model
         model.load_state_dict(shared_model.state_dict())
@@ -174,8 +168,11 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
         if glsteps > args.max_step_count:
             # testing finished
             break
-        test_simple(args, model, env, glsteps, dblogger, start_time)
-        if (testnum-1) % args.test_heavy_gap == 0:
+        if testnum  % args.test_simple_every == 0:
+            test_simple(args, model, env, glsteps, dblogger, start_time)
+        
+        if testnum % args.test_heavy_every == 0:
             test_heavy(args, model, make_env, glsteps, dblogger)
         
-        time.sleep(60) # wait for a while
+        testnum += 1
+        time.sleep(60) # wait for a minute
