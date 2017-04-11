@@ -10,6 +10,7 @@ import getpass
 from visdom import Visdom
 import sys
 import signal
+import logging
 
 import matplotlib
 matplotlib.use("agg")
@@ -21,6 +22,8 @@ from jinja2 import Template
 from utils import dblogging
 from utils.misc import human_format
 
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s %(message)s') # include timestamp
 class Mytemplates:
     List =  Template('''
           <ul>
@@ -30,11 +33,22 @@ class Mytemplates:
         </ul>
             ''')
     
-    Videos =  Template('''
+    Videos_bytes =  Template('''
             {% for data in xs %}
-                <video controls>
+                <video controls width="{{width}}" height="{{height}}">
                     <source type="video/{{ext}}" src="data:video/{{ext}};base64,{{data}}">
-                    Try Chrome
+                    Try Firefox or Chrome
+                </video>
+
+            {% endfor %}
+        </ul>
+        ''')
+
+    Videos =  Template('''
+            {% for path in xs %}
+                <video controls width="{{width}}" height="{{height}}">
+                    <source src="static/{{path}}" type="video/{{ext}}" >
+                    Try Firefox or Chrome
                 </video>
 
             {% endfor %}
@@ -48,38 +62,48 @@ class Dashboard:
        Protocol V1 of dblogger
     '''
 
-    def __init__(self, dbdir='dblogs', runlist=None, 
-            interval = 10):
+    def __init__(self, dbdir, envname, names=[], cachedir='cache',
+            interval = 1):
         '''
         dbdir: specifies where to look for sqlite log files,
-        runlist: list of run names to visualize, i.e.(07.04-04.53(no_descr))
-                  default is to make a seperate env for all of them.
+        env_name: name of the environment i.e. Pong-v0 all of them.
+        runnames: list of runnnames i.e. nod-0804-0558
+        cachedir: dir to cache renered videos, etc..
         interval: time interval to update dashboard
+        
+        NOTE, if you want to use caching make symlink of cache in
+        visdom/static directory
         '''
         self.dbdir = dbdir
-        self.runlist = runlist
+        self.runlist = []
         self.interval = interval
         
         # go through each requested env folder, find all sqlite files, take last one
-        if self.runlist is None:
-            # find all sqlite files, and add latest [1]created db TODO add option
-            self.runlist = []
-            for env_name in ['Seaquest-v0', 'Breakout-v0']:
-                tmp = []
-                envdbdir = os.path.join(dbdir, env_name)
-                for f in os.listdir(envdbdir):
-                    if f.endswith(".sqlite3"):
-                        fullpath = os.path.join(dbdir, env_name, f)
-                        tmp.append((os.path.getctime(fullpath), fullpath, f))
-                latestrun = max(tmp)[1]
-                self.runlist.append((f, fullpath)) # run name and path to db
-
-        print('Detected following db logs')
-        for name, fullpath in self.runlist:
-            print ('name : {}, path: {}'.format(name, fullpath))
-        print('=============================')
+        if len(names) == 0:
+            # find all sqlite file in env_name and add names of last 2 of them
+            tmp = []
+            envdbdir = os.path.join(dbdir, envname)
+            for name in os.listdir(envdbdir):
+                dbpath = os.path.join(dbdir, envname, name)
+                if name.endswith(".sqlite3"):
+                    without_ext = os.path.splitext(name)[0]
+                    tmp.append((os.path.getctime(dbpath), without_ext))
+            names = [ x[1] for x in sorted(tmp, reverse=True)[:2] ]
+             
+        for name in names:
+            dbpath = os.path.join(dbdir, envname, name +'.sqlite3')
+            cachepath =  os.path.join(cachedir, envname, name)
+            #cachepath = os.path.abspath(cachepath)
+            if not os.path.exists(cachepath):
+                os.makedirs(cachepath)
+            self.runlist.append((name, dbpath, cachepath)) 
+        
+        logging.info('Detected following db logs')
+        for name, dbpath, cachepath in self.runlist:
+            logging.info ('name : {}, path: {}'.format(name, dbpath))
+        logging.info('=============================')
    
-    def _update_env(self, db, viz, wins):
+    def _update_env(self, db, cache, viz, wins):
         ''' update visdom for specific env,
 
             db: DBreader object
@@ -92,15 +116,15 @@ class Dashboard:
 
         for data in db: # data is one of named tuple in dblogger
             if isinstance(data, dblogging.ExperimentArgs):
-                self._plot_args(data, db, viz, wins)
+                self._plot_args(data, db, cache, viz, wins)
             elif isinstance(data, dblogging.TestSimple):
-                self._plot_simple_test(data, db, viz, wins)
+                self._plot_simple_test(data, db, cache, viz, wins)
             elif isinstance(data, dblogging.TestHeavy):
-                self._plot_heavy_test(data, db, viz, wins)
+                self._plot_heavy_test(data, db, cache, viz, wins)
             else:
-                print ('Unknown tuple instance {}'.format(type(data).__name__))
+                logging.warning('Unknown tuple instance {}'.format(type(data).__name__))
 
-    def _plot_args(self, data, db, viz, wins):
+    def _plot_args(self, data, db, cache,  viz, wins):
         arglist = []
         for k, v in data.args.items():
             if k not in ['temp_dir', 'tboard_log_dir', 'db_path']: # we can filter out some keys
@@ -108,33 +132,31 @@ class Dashboard:
         viz.text(Mytemplates.List.render(xs=arglist), wins['runinfo'], 
                 opts={'title': 'Arguments Info'})
 
-    def _plot_simple_test(self, data, db, viz, wins):
+    def _plot_simple_test(self, data, db, cache, viz, wins):
         # =================== Average Reward Plot ============== 
-        print ('Starting simple plot')
+        logging.info('Starting simple plot')
         x = np.array([data.glsteps])
         y = np.array([data.avgscore])
         if not 'scores' in wins:
             #TODO also plot std
-            win = viz.line(X=x, Y=y,opts={'title':'Average Score'})
+            win = viz.line(X=x, Y=y,opts={'title':'Average Score', 'height':274})
             wins['scores'] = win
         else:
             viz.updateTrace(X=x,Y=y,win=wins['scores'])
         
-        print ('Done simple plot')
+        logging.info('Done simple plot')
+    
+    def render_agent_video(self, data, cache):
+        ''' renders an agent video and retunrs a path to it '''
+        video_name = 'agent-{}.mp4'.format(data.glsteps)
+        video_path = os.path.join(cache, video_name)
+        if os.path.isfile(video_path):
+            # return cached version
+            return video_path
 
+        writer = animation.writers['ffmpeg']
+        writer = writer(fps=15, metadata=dict(artist='me'), bitrate=1800)
 
-
-    def _plot_heavy_test(self, data, db, viz, wins):
-        print('Started heavy plot')
-        step = human_format(data.glsteps)
-        video_title = 'Step: {}, Score: {}'.format(step,data.score)
-        #viz.video(videofile=data.video, ispath=False, extension='mp4', 
-        #        opts={'title':video_title})
-        
-        # Get real video coming from gym monitor
-        real_video = base64.b64encode(data.video).decode('utf8')
-        real_video_tag = Mytemplates.Videos.render(xs=[real_video], ext='mp4')
-        
         state_frames=np.moveaxis(data.states, 1, 3).squeeze()
         randconv_frames=data.randomconv
         predvalues = data.predvalues.squeeze()
@@ -152,6 +174,7 @@ class Dashboard:
         #ax1.grid(False)
         #ax2.grid(False)
         ax2.set_ylim([min(predvalues)-0.2, max(predvalues)]) 
+        ax3.set_ylim(0, 1) 
         
         # animate things
         def update(num, frames, convs, predvalues, rects, convimg, 
@@ -183,29 +206,68 @@ class Dashboard:
                     action_distr), interval=50, blit=True)
         
         # conver to video
-        state_video_tag = ani.to_html5_video()
+        time_start_render = time.time()
+        state_video_tag = ani.to_html5_video(width=242, height=274)
+        logging.info('Rendering time {}'.format(time.time() - time_start_render))
+        plt.close()
         
-        viz.text(real_video_tag, opts={'title':video_title})
-        viz.text(state_video_tag, opts={'title':video_title})
-        print ('Done heavy plot')
+        ani.save(video_path, writer=writer)
+        return video_path
+    
+    def render_real_video(self, data, cache):
+        video_name = 'real-{}.mp4'.format(data.glsteps)
+        video_path = os.path.join(cache, video_name)
+        if os.path.isfile(video_path):
+            return video_path
+        
+        with open(video_path, 'wb') as f:
+            f.write(data.video)
+        #real_video = base64.b64encode(data.video).decode('utf8')
+        #real_video_tag = Mytemplates.Videos.render(xs=[real_video], ext='mp4', 
+        #        width=242, height=274)
+        return video_path
 
+    def _plot_heavy_test(self, data, db, cache, viz, wins):
+        logging.info('Started heavy plot')
+        step = human_format(data.glsteps)
+        video_title = 'Step: {}, Score: {}'.format(step,data.score)
+        #viz.video(videofile=data.video, ispath=False, extension='mp4', 
+        #        opts={'title':video_title})
+        
+        
+       
+        # Get real video coming from gym monitor
+        #real_video = base64.b64encode(data.video).decode('utf8')
+        real_video = self.render_real_video(data, cache) 
+        real_video_tag = Mytemplates.Videos.render(xs=[real_video], ext='mp4', 
+                width=242, height=274)
+
+        agent_video = self.render_agent_video(data, cache)
+        agent_video_tag = Mytemplates.Videos.render(xs=[agent_video], ext='mp4', 
+                width=242, height=274)
+
+
+        viz.text(real_video_tag + agent_video_tag, opts={'title':video_title})
+        #viz.text(state_video_tag, opts={'title':video_title})
+        print ('Done heavy plot')
 
     def update_envs(self):
         ''' update all visdom envs '''
-        for db, viz, wins in self.db_env_wins:
-            self._update_env(db, viz, wins)
+        for db, cache, viz, wins in self.tabs:
+            self._update_env(db, cache, viz, wins)
 
     def start(self):
-        # make list of db, vizs, windows triplets
-        self.db_env_wins = []
-        for (runname,runpath) in self.runlist:
-            db = dblogging.DBReader(os.path.join(runpath))
+        # each tab corrresponds to separate log
+        self.tabs = []
+        for (runname, dbpath, cachepath) in self.runlist:
+            #import ipdb; ipdb.set_trace()
+            db = dblogging.DBReader(dbpath)
             viz = Visdom(env = runname)
             
             # setup windows in the env
             wins = {'runinfo': viz.text('info')}
             
-            self.db_env_wins.append((db, viz, wins))
+            self.tabs.append((db, cachepath, viz, wins))
 
         while True:
             self.update_envs()
@@ -226,16 +288,11 @@ if __name__ == '__main__':
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         #prog = subprocess.Popen('python -m visdom.server', shell=True, preexec_fn = preexec_function)
         time.sleep(1)
-        if len(sys.argv) != 1:
-            # running server
-            dbdir = sys.argv[1]
-            #runlist = [sys.argv[1]]
-            runlist = None
-        else:
-            dbdir = 'dblogs'
-            runlist = None
+        # TODO use argparse
+        dbdir = sys.argv[1]
+        envname = sys.argv[2]
 
-        dashboard = Dashboard(dbdir=dbdir)
+        dashboard = Dashboard(dbdir, envname)
         dashboard.start()
     except KeyboardInterrupt:
         print ('keyInterrupted')

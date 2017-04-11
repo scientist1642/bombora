@@ -13,6 +13,7 @@ checkpoints/
 results/
 dblogs/
 dblogs_server/
+cache/
 
 #other
 .DS_Store   

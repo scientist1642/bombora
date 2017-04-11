@@ -47,7 +47,7 @@ parser.add_argument('--max-step-count', type=int, default=int(2e9),
                     help='maximum number of steps to run')
 parser.add_argument('--debug', action='store_true', default=False,
                     help='run in a way its easier to debug')
-parser.add_argument('--short-description', default='no_descr',
+parser.add_argument('--short-description', default='nod',
                     help='Short description of the run params used for name')
 parser.add_argument('--algo', default='a3c', dest='algo', action='store', choices=['a3c', 'a3cff'],
                     help='Algorithm to use')
@@ -61,8 +61,8 @@ def setup_loggings(args):
     logger.debug('CONFIGURATION: {}'.format(args))
     
     main_dir = os.path.dirname(os.path.realpath(__file__))
-    run_stamp = '{}({})'.format(time.strftime('%d.%m-%H.%M'), args.short_description)
-    run_title = args.env_name + '_' + run_stamp
+    run_stamp = '{}-{}'.format(args.short_description, time.strftime('%d%m-%H%M'))
+    run_title = run_stamp
     args.run_title = run_title
     run_dir = os.path.join(args.env_name, run_stamp)
     
