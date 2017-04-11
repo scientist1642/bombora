@@ -14,15 +14,16 @@ def producer():
     numpy_item = ['item3_numpyarray', arr]
     items = [dict_item, tuple_item, numpy_item]
     for item in items:
-        pp.push(pickle.dumps(item))
-        time.sleep(2)
+        pp.push('event_name', pickle.dumps(item))
+        time.sleep(0.2)
 
 def consumer():
     cc = LogDB('temp', role='consumer')
-    while True:
-        for item in cc:
-            unp_item = pickle.loads(item[1])
-            print ('Reading {}'.format(unp_item))
+    for _ in range(5):
+        for record in cc:
+            idd, event, data, date = record
+            unp_item = pickle.loads(data)
+            print ('event {}, date  {}, data {}'.format(event, date, unp_item))
         time.sleep(0.5)
 
 if __name__ == '__main__':

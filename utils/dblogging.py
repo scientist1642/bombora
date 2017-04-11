@@ -4,49 +4,67 @@ import pickle
 from collections import namedtuple
 from utils.logdb import LogDB
 import zlib
+from voluptuous import Schema
+from voluptuous import Or
+import numpy as np
 
-TestSimple = namedtuple('TestSimple',[
-        'glsteps',
-        'avgscore',
-        'avglength',
-        'stdscore',
-        'steps_second',   #steps trained per second
-        ])
+# name of the event, data should be python seriazible dict
 
-TestHeavy = namedtuple('TestHeavy',[
-        'glsteps', # number of steps when the test was recorded
-        'test_duration', # in seconds
-        'video',   # bytestr video from the original game
-        'states',  # n_xtep x state_shape,  states by the agent, preprocessed
-        'action_distr', # n_step x num_act, containing probabilities
-        'score',  # total score in the episode
-        'predvalues',  # n_step x 1, predicted values for the state by network
-        'randomconv', # n_step x conv_out_size x conv_out_size   activations of random channel in the first lauer
-        ])
+num = Or(float, int)
 
-LoggerInfo = namedtuple('LoggerInfo', [
-        'version', # db logger protocol version
-        ]
-)
-ExperimentArgs = namedtuple('ExperimentArgs', [
-        'args']
-        )
+evttypes = {
+        'LoggerInfo': Schema({
+            'evtname':'LoggerInfo',
+            'version': int,
+            }, required=True),
+        
+        'SimpleTest': Schema({
+            'evtname': 'SimpleTest', 
+            'glsteps': int,
+            'avgscore': float,
+            'avglength': float,
+            'stdscore': float,
+            'tpassed': float
+            }, required=True),
+        
+        'HeavyTest': Schema({
+            'evtname':'HeavyTest',
+            'glsteps': int, # number of steps when the test was recorded
+            'test_duration': float, # in second
+            'video':bytes,   # bytestr video from the original game
+            'states': np.ndarray, # n_xtep x state_shape,  states by the agent, preprocessed
+            'action_distr': np.ndarray, # n_step x num_act, containing probabilities
+            'score':  num, # total score in the episode
+            'predvalues':   np.ndarray, # n_step x 1, predicted values for the state by network
+            'randomconv': np.ndarray, # n_step x conv_out_size x conv_out_size   activations of random channel in the first lauer
+            }, required=True),
+        
+        'ExperimentArgs': Schema({
+            'evtname':'ExperimentArgs',
+            'args': dict,
+            }, required=True)
+}
 
 class DBLogging:
 
     def __init__(self, path):
         self.db = LogDB(path, role='producer')
-        self._push(LoggerInfo(version=1))
+        VERSION=2
+        self.log({'evtname':'LoggerInfo', 'version':1})
     
-    def _push(self, data_tuple):
-        # one of the defined named tuple which are defined above
-        serialized = pickle.dumps(data_tuple)
+    def _push(self, name, data):
+        serialized = pickle.dumps(data)
         compressed = zlib.compress(serialized)
-        self.db.push(compressed)
+        self.db.push(name, compressed)
 
-    def log(self, data_tuple):
-        self._push(data_tuple)
-    
+    def log(self, data):
+        evtname = data['evtname']
+        if evtname not in evttypes:
+            raise TypeError('Unknown event type')
+        
+        sch = evttypes[evtname]
+        data = sch(data)
+        self._push(evtname, data)
 
 class DBReader:
     # Iterator, simply wrapls LogDB 
@@ -57,7 +75,7 @@ class DBReader:
         return self
     
     def __next__(self):
-        idd, data = next(self.db)
+        idd, evtname, data, timestamp = next(self.db)
         decompressed = zlib.decompress(data)
         unserialized = pickle.loads(decompressed)
-        return unserialized
+        return (idd, evtname, unserialized, timestamp)

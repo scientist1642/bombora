@@ -9,13 +9,17 @@ class LogDB(object):
     keeps byte queue in an iterator style, next returns tuple of (id, bytes)
     '''
 
-    _sql_tbl_create = (
-        'CREATE TABLE log'
-        '(id INTEGER PRIMARY KEY AUTOINCREMENT, item BLOB)'
-    )
+    _sql_tbl_create = '''
+        CREATE TABLE log
+        (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        event CHARACTER(15),
+        data BLOB,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    '''
     _sql_tbl_delete = 'DROP TABLE IF EXISTS log'
     _sql_size = 'SELECT COUNT(*) FROM log'
-    _sql_push = 'INSERT INTO log (item) VALUES (?)'
+    _sql_push = 'INSERT INTO log (event, data) VALUES (?,?)'
     _sql_get = 'SELECT * FROM log Where id = ?'
     _sql_del = 'DELETE FROM log WHERE id = ?'
     _sql_max_id = 'SELECT * FROM log WHERE id=(SELECT MAX(id) FROM log)'
@@ -54,26 +58,29 @@ class LogDB(object):
             else:
                 return max_item_id[0]
 
-    def push(self, item):
+    def push(self, event, data):
         if self.role == 'consumer':
             raise ('push not suported for Consumer')
 
-        if not isinstance(item, bytes):
+        if not isinstance(data, bytes):
             raise TypeError('Unsupported type: {}'.format(type(item).__name__))
+        
+        if not isinstance(event, str):
+            raise TypeError('Unsupported type: {}'.format(type(event).__name__))
 
         with self._db as conn:
-            conn.execute(self._sql_push, (item,))
+            conn.execute(self._sql_push, (event, data))
 
     def __next__(self):
         with self._db as conn:
             id_to_fetch = self.last_fetched_id + 1 
             if id_to_fetch > self.max_id():
                 raise StopIteration
-            item = conn.execute(self._sql_get, (id_to_fetch,))
-            item = item.fetchone()
-            if item is not None:
+            record = conn.execute(self._sql_get, (id_to_fetch,))
+            record = record.fetchone()
+            if record is not None:
                 self.last_fetched_id = id_to_fetch
-                return item
+                return record
             else:
                 raise ('id {} was ommited'.format(id_to_fetch))
 

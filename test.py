@@ -75,16 +75,17 @@ def test_heavy(args, model, make_env,  glsteps, dblogger):
     
     #import ipdb; ipdb.set_trace()
     # do All the dblogging
-    data = dblogging.TestHeavy(
-            test_duration=time.time() - test_start_time,
-            video=video_bytestr,
-            states=np.stack(epstates),
-            predvalues=np.stack(epvalues),
-            action_distr=np.stack(action_distr),
-            score=epreward,
-            glsteps=glsteps,
-            randomconv=np.stack(eprandomconv),
-            )
+    
+    data = {'evtname':'HeavyTest',
+            'test_duration':time.time() - test_start_time,
+            'video':video_bytestr,
+            'states':np.stack(epstates),
+            'predvalues':np.stack(epvalues),
+            'action_distr':np.stack(action_distr),
+            'score':epreward,
+            'glsteps':glsteps,
+            'randomconv':np.stack(eprandomconv),
+            }
     dblogger.log(data)
     logger.info('Finished heavy test on step {}'.format(glsteps))
 
@@ -132,16 +133,20 @@ def test_simple(args, model, env, glsteps, dblogger, start_time):
 
     # Do Db loggings
     passed_time = time.time() - start_time
-    
-    data = dblogging.TestSimple(
-            glsteps=glsteps,
-            avgscore=np.average(eprewards),
-            stdscore=np.std(eprewards),
-            avglength=np.average(eplengths),
-            steps_second=glsteps / passed_time,
-            )
+   
+
+
+
+
+    data = {'evtname':'SimpleTest',
+            'glsteps': glsteps,
+            'avgscore': np.average(eprewards),
+            'stdscore': np.std(eprewards),
+            'avglength': np.average(eplengths),
+            'tpassed' : passed_time,
+            }
+
     dblogger.log(data)
-     
 
 
 def test(rank, args, shared_model, Model, make_env, shared_stepcount):
@@ -149,7 +154,7 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
     dblogger = dblogging.DBLogging(args.db_path)
     
     # log experiment args
-    dblogger.log(dblogging.ExperimentArgs(args=vars(args)))
+    dblogger.log({'evtname':'ExperimentArgs', 'args': vars(args)})
 
     env = make_env()
     env.seed(args.seed + rank)
