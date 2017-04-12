@@ -115,7 +115,7 @@ def _plot_simple_test(data, cache, viz, wins):
     if not 'scores' in wins:
         #TODO also plot std
         win = viz.line(X=x, Y=y,opts={'title':'Average Score', 
-            'height':274, 'markersize':1})
+            'markersize':1})
         wins['scores'] = win
     else:
         viz.updateTrace(X=x,Y=y,win=wins['scores'])

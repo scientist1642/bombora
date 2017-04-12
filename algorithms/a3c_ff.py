@@ -1,4 +1,4 @@
-# Basically A3C without LSTM layer
+# NOTE NOT WORKING CURRENTLY
 import math
 import os
 import sys
@@ -47,8 +47,8 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
         rewards = []
         entropies = []
         
-        if episode_count == args.max_episode_count:
-            logger.info('Maxiumum episode count {} reached..'.format(args.max_episode_count))
+        if gl_step_count.get_value() >= args.max_step_count:
+            logger.info('Maxiumum step count {} reached..'.format(args.step_count))
             # TODO make sure if no train process is running test.py closes  as well
             break
 

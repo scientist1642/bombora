@@ -32,16 +32,14 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 
-class ActorCritic(torch.nn.Module):
+class Net(torch.nn.Module):
 
     def __init__(self, num_inputs, action_space):
-        super(ActorCritic, self).__init__()
-        self.conv1 = nn.Conv2d(num_inputs, 32, 3, stride=2, padding=1)
-        self.conv2 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
-        self.conv3 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
-        self.conv4 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(num_inputs, 16, 8, stride=4, padding=4)
+        self.conv2 = nn.Conv2d(16, 32, 4, stride=2, padding=2)
 
-        self.lstm = nn.LSTMCell(32 * 3 * 3, 256)
+        self.lstm = nn.LSTMCell(4608, 256)
 
         num_outputs = action_space.n
         self.critic_linear = nn.Linear(256, 1)
@@ -64,9 +62,7 @@ class ActorCritic(torch.nn.Module):
         inputs, (hx, cx) = inputs
         conv1_out = F.elu(self.conv1(inputs))
         x = F.elu(self.conv2(conv1_out))
-        x = F.elu(self.conv3(x))
-        x = F.elu(self.conv4(x))
-        x = x.view(-1, 32 * 3 * 3)
+        x = x.view(x.size()[0], -1)  # first dimension is batch size
         hx, cx = self.lstm(x, (hx, cx))
         x = hx
         

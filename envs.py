@@ -4,66 +4,59 @@ from gym.spaces.box import Box
 import cv2
 
 # Taken from https://github.com/openai/universe-starter-agent
-def create_atari_env42(env_id):
+def atari_env(env_id, side, stacked=1):
+    ''' env_id: atari env id 
+        side: square length to rescale, now either 42 or 84
+        stacked: number of stacked frames
+    '''
+    if side not in [42, 84]:
+        raise ('Unsuported frame size')
     env = gym.make(env_id)
-    box = Box(0.0, 1.0, [1, 42, 42])
-    env = MyAtariRescale(env, _process_frame42, box)
+    box = Box(0.0, 1.0, [stacked, side, side])
+    env = MyAtariRescale(env, side, box)
     env = MyNormalizedEnv(env)
+    if stacked > 1:
+        env = MyStackedFrames(env, stacked)
     return env
 
-def create_atari_env84(env_id):
-    env = gym.make(env_id)
-    box = Box(0.0, 1.0, [4, 84, 84])
-    env = MyAtariRescale(env, _process_frame84, box)
-    env = MyNormalizedEnv(env)
-    # also stack last 4 non skipped frames
-    env = MyStackedFrames(env)
-    return env
 
-def _process_frame42(frame):
-    frame = frame[34:34 + 160, :160]
-    # Resize by half, then down to 42x42 (essentially mipmapping). If
-    # we resize directly we lose pixels that, when mapped to 42x42,
-    # aren't close enough to the pixel boundary.
-    frame = cv2.resize(frame, (80, 80))
-    frame = cv2.resize(frame, (42, 42))
-    frame = frame.mean(2)
-    frame = frame.astype(np.float32)
-    frame *= (1.0 / 255.0)
-    return frame
+class MyAtariRescale(gym.ObservationWrapper):
 
-def _process_frame84(frame):
-    frame = frame[34:34 + 160, :160]
-    frame = cv2.resize(frame, (84, 84))
-    frame = frame.mean(2)
-    frame = frame.astype(np.float32)
-    frame *= (1.0 / 255.0)
-    return frame
+    def __init__(self, env, side, box):
+        super(MyAtariRescale, self).__init__(env)
+        self.observation_space = box
+        self.side = side
+
+    def _observation(self, observation):
+        frame = observation
+        frame = frame[34:34 + 160, :160]
+        if self.side == 42:
+            # Resize by half, then down to 42x42 (essentially mipmapping). If
+            # we resize directly we lose pixels that, when mapped to 42x42,
+            # aren't close enough to the pixel boundary.
+            frame = cv2.resize(frame, (80, 80))
+            frame = cv2.resize(frame, (42, 42))
+        else:
+            frame = cv2.resize(frame, (84, 84))
+        frame = frame.mean(2)
+        frame = frame.astype(np.float32)
+        frame *= (1.0 / 255.0)
+        return frame
 
 class MyStackedFrames(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, stacked):
         super(MyStackedFrames, self).__init__(env)
+        self.stacked = stacked
 
     def _reset(self):
         observation = self.env.reset()
-        self.stacked_observ = [observation] * 4
+        self.stacked_observ = [observation] * self.stacked
         return np.vstack(self.stacked_observ)
 
     def _step(self, action):
         observation, reward, done, info = self.env.step(action)
         self.stacked_observ = self.stacked_observ[1:] + [observation]
         return np.vstack(self.stacked_observ), reward, done, info
-
-
-class MyAtariRescale(gym.ObservationWrapper):
-
-    def __init__(self, env, pre_fun, box):
-        super(MyAtariRescale, self).__init__(env)
-        self.observation_space = box
-        self.preprocess = pre_fun
-
-    def _observation(self, observation):
-        return self.preprocess(observation) 
 
 class MyNormalizedEnv(gym.ObservationWrapper):
 
@@ -85,3 +78,6 @@ class MyNormalizedEnv(gym.ObservationWrapper):
         unbiased_std = self.state_std / (1 - pow(self.alpha, self.num_steps))
         ret = (observation - unbiased_mean) / (unbiased_std + 1e-8)
         return np.expand_dims(ret, axis=0)
+
+
+

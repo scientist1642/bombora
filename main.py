@@ -6,8 +6,8 @@ import sys
 import math
 import time
 import logging
-import inspect
 import subprocess
+import importlib
 
 
 import torch
@@ -16,10 +16,11 @@ import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 from utils import logger
 from utils import my_optim
 from utils.shared_memory import SharedCounter
+
+
 
 logger = logger.getLogger(__name__)
 
@@ -51,8 +52,10 @@ parser.add_argument('--debug', action='store_true', default=False,
                     help='run in a way its easier to debug')
 parser.add_argument('--descr', default='nod',
                     help='Short description of the run params used for name')
-parser.add_argument('--algo', default='a3c', dest='algo', action='store', choices=['a3c', 'a3cff'],
+parser.add_argument('--algo', default='a3c', dest='algo', action='store', choices=['a3c'],
                     help='Algorithm to use')
+parser.add_argument('--arch', default='lstm_universe', dest='arch', action='store', choices=['lstm_universe', 'lstm_nature'],
+                    help='Architecture for the algo')
 parser.add_argument('--num-test-episodes', type=int, default=3, 
                     help='number of simple test episodes to run')
 parser.add_argument('--test-simple-every', type=int, default=2,
@@ -62,8 +65,8 @@ parser.add_argument('--test-heavy-every', type=int, default=30,
 parser.add_argument('--log-source', action='store_true', default=True,
                     help='Log github hash commit of current code')
 
-def setup_loggings(args, Model, train, test):
-    ''' Setup python logging, tboard logging and dblogging '''
+def setup_loggings(args):
+    ''' Setup args and db logging '''
     logger.debug('CONFIGURATION: {}'.format(args))
     
     main_dir = os.path.dirname(os.path.realpath(__file__))
@@ -98,27 +101,19 @@ def setup_loggings(args, Model, train, test):
 
 def get_functions(args):
     ''' based on alg type return tuple of train/test functionsm model and env factory '''
-    #TODO not very cool refactor later
     #TODO add make_model 
-    if args.algo == 'a3c':
-        from algorithms import a3c
-        from models import actorcritic
-        from test import test
-        def make_env():
-            from envs import create_atari_env42
-            return create_atari_env42(args.env_name)
-        return (a3c.train, test, actorcritic.ActorCritic, make_env)
-    elif args.algo == 'a3cff':
-        from algorithms import a3c_ff
-        from models import nips_ff
-        from test_ff import test
-        def make_env():
-            from envs import create_atari_env84
-            return create_atari_env84(args.env_name)
-        return (a3c_ff.train, test, nips_ff.ActorCritic, make_env)
-
+    import envs
+    from test import test
+    algo_module = importlib.import_module('algorithms.{}'.format(args.algo))
+    model_module = importlib.import_module('models.{}'.format(args.arch))
+    if args.arch == 'lstm_universe':
+        make_env = lambda: envs.atari_env(args.env_name, side=42, stacked=1)
+    elif args.arch == 'lstm_nature':
+        make_env = lambda: envs.atari_env(args.env_name, side=84, stacked=1)
     else:
-        raise ('Unknown argument for algo')
+        raise argparse.ArgumentError('net architeture not known')
+    
+    return (algo_module.train, test, model_module.Net, make_env)
         
 
 if __name__ == '__main__':
@@ -126,11 +121,9 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     
     train, test, Model, make_env = get_functions(args) 
-    setup_loggings(args, Model, train, test) 
-    
+    setup_loggings(args) 
     env = make_env()
-    shared_model = Model(
-        env.observation_space.shape[0], env.action_space)
+    shared_model = Model(env.observation_space.shape[0], env.action_space)
     shared_model.share_memory()
     env.close()
 

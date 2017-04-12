@@ -1,6 +1,5 @@
-# NOTE NOT WORKING CURRENTLY
-
 import math
+
 import numpy as np
 
 import torch
@@ -33,14 +32,16 @@ def weights_init(m):
         m.bias.data.fill_(0)
 
 
-class ActorCritic(torch.nn.Module):
+class Net(torch.nn.Module):
 
     def __init__(self, num_inputs, action_space):
-        super(ActorCritic, self).__init__()
-        self.conv1 = nn.Conv2d(num_inputs, 16, 8, stride=4, padding=4)
-        self.conv2 = nn.Conv2d(16, 32, 4, stride=2, padding=2)
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(num_inputs, 32, 3, stride=2, padding=1)
+        self.conv2 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
+        self.conv3 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
+        self.conv4 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
 
-        self.ff = nn.Linear(4608, 256)
+        self.lstm = nn.LSTMCell(32 * 3 * 3, 256)
 
         num_outputs = action_space.n
         self.critic_linear = nn.Linear(256, 1)
@@ -53,14 +54,26 @@ class ActorCritic(torch.nn.Module):
             self.critic_linear.weight.data, 1.0)
         self.critic_linear.bias.data.fill_(0)
 
+        self.lstm.bias_ih.data.fill_(0)
+        self.lstm.bias_hh.data.fill_(0)
+
         self.train()
 
-    def forward(self, inputs):
-        #inputs, (hx, cx) = inputs
-        x = F.elu(self.conv1(inputs))
-        x = F.elu(self.conv2(x))
-        x = x.view(-1, 32 * 12 * 12)
-        x = F.elu(self.ff(x))
-
-        return self.critic_linear(x), self.actor_linear(x)
+    def forward(self, inputs, req_params=None):
+        # if requested params is list they will be returned as well 
+        inputs, (hx, cx) = inputs
+        conv1_out = F.elu(self.conv1(inputs))
+        x = F.elu(self.conv2(conv1_out))
+        x = F.elu(self.conv3(x))
+        x = F.elu(self.conv4(x))
+        #x = x.view(-1, 32 * 3 * 3)
+        x = x.view(x.size()[0], -1)  # first dimension is batch size
+        hx, cx = self.lstm(x, (hx, cx))
+        x = hx
+        
+        # quick hardcode req_params
+        if req_params is None or 'conv1_out' not in req_params:
+            return self.critic_linear(x), self.actor_linear(x), (hx, cx)
+        else:
+            return self.critic_linear(x), self.actor_linear(x), (hx, cx, conv1_out)
 

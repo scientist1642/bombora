@@ -20,10 +20,10 @@ from utils.misc import human_format
 logger = logger.getLogger(__name__)
 
 def test(rank, args, shared_model, Model, make_env, shared_stepcount):
-    dblogger = DBLogger(args.db_path)
     torch.manual_seed(args.seed + rank)
+    
+    dblogger = DBLogger(args.db_path)
     #import ipdb; ipdb.set_trace()
-
     env = make_env()
     env.seed(args.seed + rank)
     model = Model(env.observation_space.shape[0], env.action_space)
