@@ -32,9 +32,8 @@ parser.add_argument('--env', metavar='ENV',
                     help='environment to run visualization')
 parser.add_argument('--dbdir', metavar='DBDir',
                     help='db dir, for local case dblogs')
-parser.add_argument('--fast', action='store_true', default=False,
-                    help='run in a quick mode, skips some heavy rendering')
-
+parser.add_argument('--heavy-ids', nargs='+', type=int, default=[],
+                    help='idds of heavy rendering')
 
 
 
@@ -70,7 +69,7 @@ class Mytemplates:
         ''')
 
 
-def _update_env(data, cache, viz, wins):
+def _update_env(data, cache, viz, wins, heavy_ids):
     ''' update visdom for specific env,
         
         viz: visdom env
@@ -84,17 +83,28 @@ def _update_env(data, cache, viz, wins):
     elif evtname =='SimpleTest':
         _plot_simple_test(data, cache, viz, wins, )
     elif evtname == 'HeavyTest':
-        #import ipdb; ipdb.set_trace()
-        _plot_heavy_test(data, cache, viz, wins, fastmode=args.fast)
+        _plot_heavy_test(data, cache, viz, wins, heavy_ids)
     else:
         logging.warning('Unknown tuple instance {}'.format(type(data).__name__))
 
 def _plot_args(data, cache,  viz, wins):
-    arglist = []
-    for k, v in data['args'].items():
+    def get_pr(item):
+        k, v= item
+        pr = {'source_code': 0}
+        if k in pr:
+            return pr[k]
+        else:
+            return 100
+    arglist = sorted(data['args'].items(), key=get_pr)
+
+    xs = []
+    for k, v in arglist:
         if k not in ['temp_dir', 'tboard_log_dir', 'db_path']: # we can filter out some keys
-            arglist.append(str(k) +' : '+ str(v))
-    viz.text(Mytemplates.List.render(xs=arglist), wins['runinfo'], 
+            kk, vv = str(k), str(v)
+            if kk == 'source_code':
+                vv =  '<a href="{}">code</a>'.format(vv)
+            xs.append(kk +' : '+ vv)
+    viz.text(Mytemplates.List.render(xs=xs), wins['runinfo'], 
             opts={'title': 'Arguments Info'})
 
 def _plot_simple_test(data, cache, viz, wins):
@@ -131,7 +141,7 @@ def render_agent_video(data, cache):
     
     # create figs axis and some fine tuning
     fig,((ax4,ax2),(ax3,ax1)) = plt.subplots(2, 2, figsize=(6, 6), dpi=80)
-    fig.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.05, hspace=0.05)
+    fig.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.01, hspace=0.01)
     plt.setp(ax1.get_xticklabels(), visible=False)
     plt.setp(ax1.get_yticklabels(), visible=False)
     plt.setp(ax2.get_xticklabels(), visible=False)
@@ -193,10 +203,11 @@ def render_real_video(data, cache):
     #        width=242, height=274)
     return video_path
 
-def _plot_heavy_test(data, cache, viz, wins, fastmode):
+def _plot_heavy_test(data, cache, viz, wins, heavy_ids):
     logging.info('Started heavy plot')
     step = human_format(data['glsteps'])
-    video_title = 'Step: {}, Score: {}'.format(step,data['score'])
+    video_title = 'Step: {}, Score: {} ID: {}'.format(
+            step, data['score'],data['idd'])
     #viz.video(videofile=data.video, ispath=False, extension='mp4', 
     #        opts={'title':video_title})
     
@@ -208,13 +219,12 @@ def _plot_heavy_test(data, cache, viz, wins, fastmode):
     real_video_tag = Mytemplates.Videos.render(xs=[real_video], ext='mp4', 
             width=242, height=274)
     
-    if fastmode:
-        agent_video_tag=''
-    else:
+    if data['idd'] in heavy_ids:
         agent_video = render_agent_video(data, cache)
         agent_video_tag = Mytemplates.Videos.render(xs=[agent_video], ext='mp4', 
                 width=242, height=274)
-
+    else:
+        agent_video_tag=''
 
     viz.text(real_video_tag + agent_video_tag, opts={'title':video_title})
     #viz.text(state_video_tag, opts={'title':video_title})
@@ -278,7 +288,8 @@ class Dashboard:
         for db, cache, viz, wins in self.tabs:
             try:
                 idd, evtname, data, timestamp = next(db)
-                _update_env(data, cache, viz, wins)
+                data['idd'] = idd
+                _update_env(data, cache, viz, wins, self.args.heavy_ids)
                 updated = True
             except StopIteration:
                 pass

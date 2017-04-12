@@ -6,13 +6,15 @@ import sys
 import math
 import time
 import logging
+import inspect
+import subprocess
+
 
 import torch
 import torch.optim as optim
 import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.functional as F
-#import tensorboard_logger as tb
 
 
 from utils import logger
@@ -57,8 +59,10 @@ parser.add_argument('--test-simple-every', type=int, default=2,
                     help='intervals in minutes beteween simple test')
 parser.add_argument('--test-heavy-every', type=int, default=30,
                     help='intervals in minutes beteween heavy test')
+parser.add_argument('--log-source', action='store_true', default=True,
+                    help='Log github hash commit of current code')
 
-def setup_loggings(args):
+def setup_loggings(args, Model, train, test):
     ''' Setup python logging, tboard logging and dblogging '''
     logger.debug('CONFIGURATION: {}'.format(args))
     
@@ -67,10 +71,6 @@ def setup_loggings(args):
     run_title = run_stamp
     args.run_title = run_title
     run_dir = os.path.join(args.env_name, run_stamp)
-    
-    # dir for tensorboard logs (tboard might be removed later)
-    #tboard_log_dir = os.path.join(main_dir, 'runs', run_dir)
-    #args.tboard_log_dir = tboard_log_dir
     
     # dir for temp folders
     temp_dir = os.path.join(main_dir, 'dblogs', 'tempdir') 
@@ -85,8 +85,14 @@ def setup_loggings(args):
     args.db_path = os.path.join(db_dir, run_title + '.sqlite3')
     
     logger.info('db log path is {}'.format(args.db_path))
-    #logger.info('logging tensorboard graphs to {}'.format(tboard_log_dir))
-    #tb.configure(tboard_log_dir)
+
+    # Now let's keep the link to the current commit in args
+    if args.log_source:
+        hashcode = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+        remote = subprocess.check_output(['git', 'remote', '-v'])
+        hashcode, remote = map(lambda x: x.decode('utf-8').strip(), (hashcode, remote))
+        remote_addr = remote.split()[1][:-4] #without .git
+        args.source_code = '{}/tree/{}'.format(remote_addr, hashcode)
 
 def get_functions(args):
     ''' based on alg type return tuple of train/test functionsm model and env factory '''
@@ -96,6 +102,7 @@ def get_functions(args):
         from algorithms import a3c
         from models import actorcritic
         from test import test
+        inspect.getsource(actorcritic)
         def make_env():
             from envs import create_atari_env42
             return create_atari_env42(args.env_name)
@@ -117,9 +124,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     torch.manual_seed(args.seed)
     
-    setup_loggings(args) 
     train, test, Model, make_env = get_functions(args) 
-
+    setup_loggings(args, Model, train, test) 
+    
     env = make_env()
     shared_model = Model(
         env.observation_space.shape[0], env.action_space)
