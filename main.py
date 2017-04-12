@@ -91,7 +91,9 @@ def setup_loggings(args, Model, train, test):
         hashcode = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
         remote = subprocess.check_output(['git', 'remote', '-v'])
         hashcode, remote = map(lambda x: x.decode('utf-8').strip(), (hashcode, remote))
-        remote_addr = remote.split()[1][:-4] #without .git
+        remote_addr = remote.split()[1]
+        if remote_addr.endswith('.git'):
+            remote_addr = remote_addr[:-4]
         args.source_code = '{}/tree/{}'.format(remote_addr, hashcode)
 
 def get_functions(args):
@@ -102,7 +104,6 @@ def get_functions(args):
         from algorithms import a3c
         from models import actorcritic
         from test import test
-        inspect.getsource(actorcritic)
         def make_env():
             from envs import create_atari_env42
             return create_atari_env42(args.env_name)

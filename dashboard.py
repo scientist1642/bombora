@@ -163,7 +163,6 @@ def render_agent_video(data, cache):
         hist = min(num, 50)
         predline.set_data(np.linspace(0, 1, hist), predvalues[num-hist:num])
         # update  action distribution plot 3
-        #import ipdb; ipdb.set_trace()
         for rect, h in zip(rects, action_distr[num]):
             rect.set_height(h)
 
@@ -299,7 +298,6 @@ class Dashboard:
         # each tab corrresponds to separate log
         self.tabs = []
         for (runname, dbpath, cachepath) in self.runlist:
-            #import ipdb; ipdb.set_trace()
             db = dblogging.DBReader(dbpath)
             viz = Visdom(env = runname)
             
