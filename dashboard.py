@@ -90,7 +90,7 @@ def _update_env(data, cache, viz, wins, heavy_ids):
 def _plot_args(data, cache,  viz, wins):
     def get_pr(item):
         k, v= item
-        pr = {'source_code': 0}
+        pr = {'source_url': 0}
         if k in pr:
             return pr[k]
         else:
@@ -101,7 +101,8 @@ def _plot_args(data, cache,  viz, wins):
     for k, v in arglist:
         if k not in ['temp_dir', 'tboard_log_dir', 'db_path']: # we can filter out some keys
             kk, vv = str(k), str(v)
-            if kk == 'source_code':
+            if kk == 'source_url':
+                #import ipdb; ipdb.set_trace()
                 vv =  '<a href="{}">code</a>'.format(vv)
             xs.append(kk +' : '+ vv)
     viz.text(Mytemplates.List.render(xs=xs), wins['runinfo'], 

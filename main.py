@@ -62,8 +62,8 @@ parser.add_argument('--test-simple-every', type=int, default=2,
                     help='intervals in minutes beteween simple test')
 parser.add_argument('--test-heavy-every', type=int, default=30,
                     help='intervals in minutes beteween heavy test')
-parser.add_argument('--log-source', action='store_true', default=True,
-                    help='Log github hash commit of current code')
+parser.add_argument('--source-url', default='',
+                    help='url to browse current source code')
 
 def setup_loggings(args):
     ''' Setup args and db logging '''
@@ -90,14 +90,14 @@ def setup_loggings(args):
     logger.info('db log path is {}'.format(args.db_path))
 
     # Now let's keep the link to the current commit in args
-    if args.log_source:
+    if not args.source_url:
         hashcode = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
         remote = subprocess.check_output(['git', 'remote', '-v'])
         hashcode, remote = map(lambda x: x.decode('utf-8').strip(), (hashcode, remote))
         remote_addr = remote.split()[1]
         if remote_addr.endswith('.git'):
             remote_addr = remote_addr[:-4]
-        args.source_code = '{}/tree/{}'.format(remote_addr, hashcode)
+        args.source_url = '{}/tree/{}'.format(remote_addr, hashcode)
 
 def get_functions(args):
     ''' based on alg type return tuple of train/test functionsm model and env factory '''

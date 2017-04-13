@@ -9,7 +9,6 @@ from collections import deque
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-import tensorboard_logger as tb
 import numpy as np
 from gym import wrappers
 
