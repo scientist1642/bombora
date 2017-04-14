@@ -12,6 +12,7 @@ import sys
 import signal
 import logging
 import argparse
+from collections import defaultdict
 
 import matplotlib
 matplotlib.use("agg")
@@ -35,7 +36,8 @@ parser.add_argument('--dbdir', metavar='DBDir',
 parser.add_argument('--heavy-ids', nargs='+', type=int, default=[],
                     help='idds of heavy rendering')
 
-
+parser.add_argument('--max-events', type=int, default=10000000,
+                    help='max number of event to read from each db')
 
 class Mytemplates:
     List =  Template('''
@@ -69,28 +71,11 @@ class Mytemplates:
         ''')
 
 
-def _update_env(data, cache, viz, wins, heavy_ids):
-    ''' update visdom for specific env,
-        
-        viz: visdom env
-        cache: directory path to save videos
-        windows: dict of windows on this env
-        
-    '''
-    evtname = data['evtname'] 
-    if evtname == 'ExperimentArgs':
-        _plot_args(data, cache, viz, wins)
-    elif evtname =='SimpleTest':
-        _plot_simple_test(data, cache, viz, wins, )
-    elif evtname == 'HeavyTest':
-        _plot_heavy_test(data, cache, viz, wins, heavy_ids)
-    else:
-        logging.warning('Unknown tuple instance {}'.format(type(data).__name__))
 
 def _plot_args(data, cache,  viz, wins):
     def get_pr(item):
         k, v= item
-        pr = {'source_url': 0}
+        pr = {'source_code': 0}
         if k in pr:
             return pr[k]
         else:
@@ -101,28 +86,57 @@ def _plot_args(data, cache,  viz, wins):
     for k, v in arglist:
         if k not in ['temp_dir', 'tboard_log_dir', 'db_path']: # we can filter out some keys
             kk, vv = str(k), str(v)
-            if kk == 'source_url':
+            if kk == 'source_code':
                 #import ipdb; ipdb.set_trace()
                 vv =  '<a href="{}">code</a>'.format(vv)
             xs.append(kk +' : '+ vv)
     viz.text(Mytemplates.List.render(xs=xs), wins['runinfo'], 
             opts={'title': 'Arguments Info'})
 
-def _plot_simple_test(data, cache, viz, wins):
-    # =================== Average Reward Plot ============== 
-    #logging.info('Starting simple plot')
-    x = np.array([data['glsteps']])
-    y = np.array([data['avgscore']])
-    if not 'scores' in wins:
-        #TODO also plot std
-        win = viz.line(X=x, Y=y,opts={'title':'Average Score', 
-            'markersize':1})
-        wins['scores'] = win
+def _update_line(x, y, viz, wins, title, legend, opts=None):
+    ''' Updates or creates a line plot and appends x, y point '''
+    xx = np.array([x])
+    yy = np.array([y])
+    if not title in wins:
+        if not opts:
+            opts = {'title': title, 'markersize':1, 'legend':[legend]}
+        win = viz.line(X=xx, Y=yy, opts=opts)
+        wins[title] = win
     else:
-        viz.updateTrace(X=x,Y=y,win=wins['scores'])
-    
-    #logging.info('Done simple plot')
+        viz.updateTrace(X=xx, Y=yy, win=wins[title], name=legend)
 
+def _update_bar(xs, viz, wins, rownames, title, legend=None, opts=None):
+    if not opts:
+        rownames = list(rownames)
+        if len(xs.shape) == 1:
+            opts={'rownames':rownames, 'stacked':False, 'title':title}
+        else:
+            opts={'rownames':rownames, 'legend':legend, 'stacked':True, 'title':title}
+    if not title in wins:
+        win = viz.bar(X=xs, opts=opts)
+        wins[title] = win
+    else:
+        viz.bar(X=xs, win = wins[title], opts=opts)
+
+def _update_scatter(x, y, viz, wins, title, legend, opts=None):
+    if not title in wins:
+        if not opts:
+            opts = {'title': title, 'legend':[legend]}
+        xx = np.array([x, y]).reshape(1, 2)
+        win = viz.scatter(X=xx, opts=opts)
+        wins[title] = win
+    else:
+        xx = np.array([x])
+        yy = np.array([y])
+        viz.updateTrace(X=xx, Y=yy, win=wins[title], name=legend)
+
+def _plot_simple_test(data, cache, viz, wins):
+    # ==============Updating individual win ===========
+    steps = data['glsteps']
+    _update_line(steps, data['avgscore'], viz, wins, 
+            title='Average Score', legend=viz.env)
+
+                    
 def render_agent_video(data, cache):
     ''' renders an agent video and retunrs a path to it '''
     video_name = 'agent-{}.mp4'.format(data['glsteps'])
@@ -278,26 +292,123 @@ class Dashboard:
             logging.info ('name : {}, path: {}'.format(name, dbpath))
         logging.info('=============================')
 
+    def _plot_main(self, env_datas, mainviz, mainwins):
+        ''' updates main window 
+            env_datas: list of env_name, data pairs'''
+        if len(env_datas) == 0:
+            return
 
+        # unfortunatelly no update trace for barplot we should keep it ourselves
+
+        for envname, data in env_datas:
+            #import ipdb; ipdb.set_trace()
+            if data['evtname'] == 'SimpleTest':
+                steps = data['glsteps']
+                _update_line(steps, data['avgscore'], mainviz, mainwins, 
+                        title='Average Score', legend=envname)
+                _update_line(steps, data['stdscore'], mainviz, mainwins, 
+                        title='Average Std', legend=envname)
+                _update_line(steps, data['avglength'], mainviz, mainwins, 
+                        title='Average Game Length', legend=envname)
+                #_update_line(steps, steps / data['tpassed'], mainviz, mainwins, 
+                #        title='Steps / Second', legend=envname)
+                self.speed_bars[envname] = (steps / data['tpassed'])
+            elif data['evtname'] == 'HeavyTest':
+                self.action_distr_bars[envname] = data['action_distr']
+                eplength = data['action_distr'].shape[0]
+                score = data['score']
+                _update_scatter(eplength, score, mainviz, mainwins, 
+                        title='Length vs Score', legend=envname)
+            else:
+                pass
+    
+        if len(self.speed_bars) > 1:
+            rownames, xx = zip(*self.speed_bars.items())
+            xx = np.array(xx)
+            _update_bar(xx, mainviz, mainwins, rownames, title='Steps/S')
+        
+        if len(self.action_distr_bars) > 1:
+            rownames, xx = zip(*self.action_distr_bars.items())
+            env_num = len(rownames)
+            action_num = xx[0].shape[1]
+            legend = self.action_names
+            # each  elem in xx is (num_steps X actions_num) dim lets find chosen actions
+            # and make array of size env_num x action_num # chosen actions
+            #TODO pass chosen actions in data pack, and replace here
+            X = np.zeros((env_num, action_num))
+            for i, x in enumerate(xx):
+                chosen_actions = np.argmax(x, axis=1)
+                for act in chosen_actions:
+                    X[i, act] += 1
+            # normalize 
+            #import ipdb; ipdb.set_trace()
+            denom = X.sum(axis=1) / 100
+            X = X / np.expand_dims(denom, 1)
+            #import ipdb; ipdb.set_trace() 
+            _update_bar(X, mainviz, mainwins, rownames, 
+                    title='Used Actions',legend=legend)
+
+    def _update_env(self, data, cache, viz, wins, heavy_ids):
+        ''' update visdom for specific env,
+            
+            viz: visdom env
+            cache: directory path to save videos
+            windows: dict of windows on this env
+            
+        '''
+        evtname = data['evtname'] 
+        if evtname == 'ExperimentArgs':
+            _plot_args(data, cache, viz, wins)
+            self.experiment_args = data
+            # TODO pass it from data 
+            import gym
+            gym_env = gym.make(data['args']['env_name'])
+            gym_env.reset()
+            self.action_names = gym_env.env.get_action_meanings()
+            gym_env.close()
+        elif evtname =='SimpleTest':
+            _plot_simple_test(data, cache, viz, wins)
+        elif evtname == 'HeavyTest':
+            _plot_heavy_test(data, cache, viz, wins, heavy_ids)
+        else:
+            logging.warning('Unknown tuple instance {}'.format(type(data).__name__))
     def update_envs(self):
         ''' update all visdom envs '''
         #pool = multiprocessing.Pool(3)
         #pool.starmap(_update_env, self.tabs) 
         # self.tabs contains db, cache, viz wins
         updated = False
+        env_datas = []  # pairs of env and data
         for db, cache, viz, wins in self.tabs:
             try:
                 idd, evtname, data, timestamp = next(db)
                 data['idd'] = idd
-                _update_env(data, cache, viz, wins, self.args.heavy_ids)
+                self._update_env(data, cache, viz, wins, self.args.heavy_ids)
+                env_datas.append((viz.env, data))
                 updated = True
             except StopIteration:
                 pass
+        
+        # now update main
+        time.sleep(0.2)
+        mainviz, mainwins = self.mainviz, self.mainwins
+        self._plot_main(env_datas, mainviz, mainwins)
+        
         return updated
 
     def start(self):
         # each tab corrresponds to separate log
-        self.tabs = []
+        self.tabs = []       
+        
+        # shared tab for different logs
+        self.mainviz = Visdom(env='main')
+        self.mainwins = {}          # name, win pairs
+        
+        self.action_names = []
+        
+        self.speed_bars = {}
+        self.action_distr_bars = {}
+
         for (runname, dbpath, cachepath) in self.runlist:
             db = dblogging.DBReader(dbpath)
             viz = Visdom(env = runname)
@@ -306,11 +417,14 @@ class Dashboard:
             wins = {'runinfo': viz.text('info')}
             
             self.tabs.append((db, cachepath, viz, wins))
-
-        while True:
+        
+        for i in range(self.args.max_events):
             updated = self.update_envs()
             if not updated:
-                time.sleep(self.interval)
+                time.slep(self.interval)
+        
+        print ('Log replay Finished')
+        time.sleep(1000000)
 
 
 if __name__ == '__main__':

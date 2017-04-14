@@ -39,6 +39,7 @@ def test_heavy(args, model, make_env,  glsteps, dblogger):
     epvalues = [] # predicted values
     action_distr = []
     eprandomconv=[]
+    epactions = []
     actions = deque(maxlen=100)
     while True: # episode is running
         inputs = (Variable(state.unsqueeze(0), volatile=True), (hx, cx))
@@ -50,8 +51,10 @@ def test_heavy(args, model, make_env,  glsteps, dblogger):
         action = prob.max(1)[1].data.numpy()
         
         eprandomconv.append(conv1_out.data.numpy()[0][11])   # save random conv activations for analyze # unbiased random num is 11 :)
-        actions.append(action[0, 0])
-        state, reward, done, _ = env.step(action[0, 0])
+        chosen_action = action[0, 0]
+        actions.append(chosen_action)
+        epactions.append(chosen_action)
+        state, reward, done, _ = env.step(chosen_action)
         epreward += reward
         eplength += 1
         epstates.append(state)
@@ -82,6 +85,7 @@ def test_heavy(args, model, make_env,  glsteps, dblogger):
             'score':epreward,
             'glsteps':glsteps,
             'randomconv':np.stack(eprandomconv),
+            'actions': epactions,
             }
     dblogger.log(data)
     logger.info('Finished heavy test on step {}'.format(glsteps))
@@ -147,14 +151,22 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
     torch.manual_seed(args.seed + rank)
     dblogger = dblogging.DBLogging(args.db_path)
     
-    # log experiment args
-    dblogger.log({'evtname':'ExperimentArgs', 'args': vars(args)})
 
     env = make_env()
     env.seed(args.seed + rank)
     model = Model(env.observation_space.shape[0], env.action_space)
     model.eval()
     start_time = time.time()
+    
+    # log experiment args
+    # GET action names TODO see why this is needed
+    orig_env = env
+    while not hasattr(orig_env, 'get_action_meanings'):
+        orig_env = orig_env.env
+
+    dblogger.log({'evtname':'ExperimentArgs', 
+        'args': vars(args),
+        'action_names':orig_env.get_action_meanings()})
     
     testnum = 0
     #recording = False

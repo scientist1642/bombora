@@ -37,11 +37,13 @@ evttypes = {
             'score':  num, # total score in the episode
             'predvalues':   np.ndarray, # n_step x 1, predicted values for the state by network
             'randomconv': np.ndarray, # n_step x conv_out_size x conv_out_size   activations of random channel in the first lauer
+            'actions': list, #chosen actions at each timestap
             }, required=True),
         
         'ExperimentArgs': Schema({
             'evtname':'ExperimentArgs',
-            'args': dict,
+            'args': dict,   # argparse arg
+            'action_names': list,  # action descriptions
             }, required=True)
 }
 
