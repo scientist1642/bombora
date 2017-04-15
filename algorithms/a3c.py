@@ -25,7 +25,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
     env = make_env()
     env.seed(args.seed + rank)
 
-    model = Model(env.observation_space.shape[0], env.action_space)
+    model = Model(args.num_channels, args.num_actions)
 
     if optimizer is None:
         optimizer = optim.Adam(shared_model.parameters(), lr=args.lr)

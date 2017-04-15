@@ -20,7 +20,7 @@ from utils.misc import human_format
 
 logger = logger.getLogger(__name__)
 
-def test_heavy(args, model, make_env,  glsteps, dblogger):
+def test_heavy(args, dblogger, model, make_env,  glsteps):
     logger.info('Doing heavy test on step {}'.format(glsteps))
     test_start_time = time.time()
     env = make_env() # should be closed
@@ -90,7 +90,7 @@ def test_heavy(args, model, make_env,  glsteps, dblogger):
     dblogger.log(data)
     logger.info('Finished heavy test on step {}'.format(glsteps))
 
-def test_simple(args, model, env, glsteps, dblogger, start_time):
+def test_simple(args, dblogger, model, env, glsteps, start_time):
     logger.info('Doing simple test on step {}'.format(glsteps))
     eprewards = []
     eplengths = []
@@ -147,6 +147,23 @@ def test_simple(args, model, env, glsteps, dblogger, start_time):
 
     logger.info('Finished simple test on step {}'.format(glsteps))
 
+def save_model(args, dblogger, model, glsteps, testnum):
+    state_dict = model.state_dict()
+    with tempfile.NamedTemporaryFile(dir=args.temp_dir) as tmpf:
+        torch.save(model.state_dict(), tmpf.name)
+        data = {'evtname':'ModelCheckpoint',
+                'glsteps':glsteps,
+                'tpassed':testnum * 60.,
+                'algo': args.algo,
+                'arch': args.arch,
+                'num_channels': args.num_channels,
+                'num_actions': args.num_actions,
+                'state_dict': tmpf.read()
+                }
+        if testnum >= 0: # don't waste space
+            dblogger.log(data)
+            logger.info('logged model on step {}'.format(glsteps))
+
 def test(rank, args, shared_model, Model, make_env, shared_stepcount):
     torch.manual_seed(args.seed + rank)
     dblogger = dblogging.DBLogging(args.db_path)
@@ -154,7 +171,7 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
 
     env = make_env()
     env.seed(args.seed + rank)
-    model = Model(env.observation_space.shape[0], env.action_space)
+    model = Model(args.num_channels, args.num_actions)
     model.eval()
     start_time = time.time()
     
@@ -167,6 +184,7 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
     dblogger.log({'evtname':'ExperimentArgs', 
         'args': vars(args),
         'action_names':orig_env.get_action_meanings()})
+
     
     testnum = 0
     #recording = False
@@ -180,10 +198,14 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
             # testing finished
             break
         if testnum  % args.test_simple_every == 0:
-            test_simple(args, model, env, glsteps, dblogger, start_time)
+            test_simple(args, dblogger, model, env, glsteps, start_time)
         
         if testnum % args.test_heavy_every == 0:
-            test_heavy(args, model, make_env, glsteps, dblogger)
+            test_heavy(args, dblogger, model, make_env, glsteps)
+
+        if testnum % args.save_model_every == 0:
+            save_model(args, dblogger, model, glsteps, testnum)
+
         
         testnum += 1
         time.sleep(60) # wait for a minute

@@ -59,9 +59,11 @@ parser.add_argument('--arch', default='lstm_universe', dest='arch', action='stor
 parser.add_argument('--num-test-episodes', type=int, default=3, 
                     help='number of simple test episodes to run')
 parser.add_argument('--test-simple-every', type=int, default=2,
-                    help='intervals in minutes beteween simple test')
+                    help='interval in minutes beteween simple test')
 parser.add_argument('--test-heavy-every', type=int, default=30,
-                    help='intervals in minutes beteween heavy test')
+                    help='interval in minutes beteween heavy test')
+parser.add_argument('--save-model-every', type=int, default=60,
+                    help='interval in minutes to save model params')
 parser.add_argument('--source-url', default='',
                     help='url to browse current source code')
 
@@ -121,11 +123,14 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     
     train, test, Model, make_env = get_functions(args) 
-    setup_loggings(args) 
+    
     env = make_env()
-    shared_model = Model(env.observation_space.shape[0], env.action_space)
-    shared_model.share_memory()
+    args.num_channels = env.observation_space.shape[0]
+    args.num_actions = env.action_space.n
     env.close()
+    setup_loggings(args)
+    shared_model = Model(args.num_channels, args.num_actions)
+    shared_model.share_memory()
 
     if args.no_shared:
         optimizer = None

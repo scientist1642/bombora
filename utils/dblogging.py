@@ -44,6 +44,17 @@ evttypes = {
             'evtname':'ExperimentArgs',
             'args': dict,   # argparse arg
             'action_names': list,  # action descriptions
+            }, required=True),
+
+        'ModelCheckpoint': Schema({
+            'evtname':'ModelCheckpoint',
+            'glsteps': int,   
+            'algo': str,
+            'arch': str, # architechture
+            'tpassed': float, 
+            'num_channels': int, # first dim of observation
+            'num_actions': int,  # number of actions in environment
+            'state_dict':bytes, # serialized model.state_dict() 
             }, required=True)
 }
 

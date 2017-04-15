@@ -34,14 +34,14 @@ def weights_init(m):
 
 class Net(torch.nn.Module):
 
-    def __init__(self, num_inputs, action_space):
+    def __init__(self, num_channels, num_actions):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(num_inputs, 16, 8, stride=4, padding=4)
+        self.conv1 = nn.Conv2d(num_channels, 16, 8, stride=4, padding=4)
         self.conv2 = nn.Conv2d(16, 32, 4, stride=2, padding=2)
 
         self.lstm = nn.LSTMCell(4608, 256)
 
-        num_outputs = action_space.n
+        num_outputs = num_actions
         self.critic_linear = nn.Linear(256, 1)
         self.actor_linear = nn.Linear(256, num_outputs)
         self.apply(weights_init)
