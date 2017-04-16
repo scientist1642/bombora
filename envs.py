@@ -4,13 +4,11 @@ from gym.spaces.box import Box
 import cv2
 
 # Taken from https://github.com/openai/universe-starter-agent
-def atari_env(env_id, side, stacked=1):
+def atari_env(env_id, stacked=1, side=None):
     ''' env_id: atari env id 
         side: square length to rescale, now either 42 or 84
         stacked: number of stacked frames
     '''
-    if side not in [42, 84]:
-        raise ('Unsuported frame size')
     env = gym.make(env_id)
     box = Box(0.0, 1.0, [stacked, side, side])
     env = MyAtariRescale(env, side, box)

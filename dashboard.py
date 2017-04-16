@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO,
 
 
 parser = argparse.ArgumentParser(description='Dashboard')
-parser.add_argument('--env', metavar='ENV',
+parser.add_argument('-e', '--env', metavar='ENV',
                     help='environment to run visualization')
 parser.add_argument('--dbdir', metavar='DBDir',
                     help='db dir, for local case dblogs')
@@ -39,6 +39,8 @@ parser.add_argument('--heavy-ids', nargs='+', type=int, default=[],
 parser.add_argument('--max-events', type=int, default=10000000,
                     help='max number of event to read from each db')
 
+parser.add_argument('-n', '--env-count', type=int, default=2,
+                    help='number of last db logs to read')
 class Mytemplates:
     List =  Template('''
           <ul>
@@ -277,7 +279,7 @@ class Dashboard:
                 if name.endswith(".sqlite3"):
                     without_ext = os.path.splitext(name)[0]
                     tmp.append((os.path.getctime(dbpath), without_ext))
-            names = [ x[1] for x in sorted(tmp, reverse=True)[:2] ]
+            names = [ x[1] for x in sorted(tmp, reverse=True)[:args.env_count] ]
              
         for name in names:
             dbpath = os.path.join(dbdir, envname, name +'.sqlite3')

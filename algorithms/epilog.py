@@ -70,6 +70,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
             log_prob = F.log_softmax(logit)
             entropy = -(log_prob * prob).sum(1)
             entropies.append(entropy)
+            
             action = prob.multinomial().data
             log_prob = log_prob.gather(1, Variable(action))
 

@@ -42,7 +42,7 @@ parser.add_argument('--num-steps', type=int, default=20, metavar='NS',
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=10000, metavar='M',
                     help='maximum length of an episode (default: 10000)')
-parser.add_argument('--env-name', default='Pong-v0', metavar='ENV',
+parser.add_argument('-e', '--env-name', default='Pong-v0', metavar='ENV',
                     help='environment to train on (default: PongDeterministic-v3)')
 parser.add_argument('--no-shared', default=False, metavar='O',
                     help='use an optimizer without shared momentum.')
@@ -50,9 +50,9 @@ parser.add_argument('--max-step-count', type=int, default=int(2e9),
                     help='maximum number of steps to run')
 parser.add_argument('--debug', action='store_true', default=False,
                     help='run in a way its easier to debug')
-parser.add_argument('--descr', default='nod',
+parser.add_argument('-d', '--descr', default='nod',
                     help='Short description of the run params used for name')
-parser.add_argument('--algo', default='a3c', dest='algo', action='store', choices=['a3c'],
+parser.add_argument('--algo', default='a3c', dest='algo', action='store', choices=['a3c', 'origins', 'epilog'],
                     help='Algorithm to use')
 parser.add_argument('--arch', default='lstm_universe', dest='arch', action='store', choices=['lstm_universe', 'lstm_nature'],
                     help='Architecture for the algo')

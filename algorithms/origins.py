@@ -1,3 +1,4 @@
+# EXPERIMENTAL
 import math
 import os
 import sys
@@ -70,6 +71,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
             log_prob = F.log_softmax(logit)
             entropy = -(log_prob * prob).sum(1)
             entropies.append(entropy)
+            
             action = prob.multinomial().data
             log_prob = log_prob.gather(1, Variable(action))
 
@@ -104,6 +106,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
         R = Variable(R)
         gae = torch.zeros(1, 1)
         for i in reversed(range(len(rewards))):
+            #import ipdb; ipdb.set_trace()
             R = args.gamma * R + rewards[i]
             advantage = R - values[i]
             value_loss = value_loss + 0.5 * advantage.pow(2)
@@ -112,9 +115,8 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
             delta_t = rewards[i] + args.gamma * \
                 values[i + 1].data - values[i].data
             gae = gae * args.gamma * args.tau + delta_t
-
             policy_loss = policy_loss - \
-                log_probs[i] * Variable(gae) - 0.01 * entropies[i]
+                log_probs[i] * advantage.data[0,0] - 0.01 * entropies[i]
 
         optimizer.zero_grad()
 
@@ -123,3 +125,4 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
 
         ensure_shared_grads(model, shared_model)
         optimizer.step()
+
