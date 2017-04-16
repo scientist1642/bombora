@@ -75,7 +75,7 @@ class Mytemplates:
 def _plot_args(data, cache,  viz, wins):
     def get_pr(item):
         k, v= item
-        pr = {'source_code': 0}
+        pr = {'source_url': 1, 'env_name':0}
         if k in pr:
             return pr[k]
         else:
@@ -86,7 +86,7 @@ def _plot_args(data, cache,  viz, wins):
     for k, v in arglist:
         if k not in ['temp_dir', 'tboard_log_dir', 'db_path']: # we can filter out some keys
             kk, vv = str(k), str(v)
-            if kk == 'source_code':
+            if kk == 'source_url':
                 #import ipdb; ipdb.set_trace()
                 vv =  '<a href="{}">code</a>'.format(vv)
             xs.append(kk +' : '+ vv)
@@ -421,7 +421,7 @@ class Dashboard:
         for i in range(self.args.max_events):
             updated = self.update_envs()
             if not updated:
-                time.slep(self.interval)
+                time.sleep(self.interval)
         
         print ('Log replay Finished')
         time.sleep(1000000)
