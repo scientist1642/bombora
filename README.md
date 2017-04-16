@@ -1,42 +1,34 @@
 # Bombora
-My various ongoing experiments with RL originally based on [ikostrikov/pytorch-a3c](https://github.com/ikostrikov/pytorch-a3c).
-
-If you want to get started with A3C check out [ikostrikov/pytorch-a3c](https://github.com/ikostrikov/pytorch-a3c) or for more extensive implementations in tensorflow refer to [steveKapturowski/tensorflow-rl](https://github.com/steveKapturowski/tensorflow-rl).
+My ongoing experiments in RL, originally based on [ikostrikov/pytorch-a3c](https://github.com/ikostrikov/pytorch-a3c).
 
 
 
 ### Usage
 ```
-OMP_NUM_THREADS=1 python main.py --env-name "PongDeterministic-v3" --algo a3c --num-processes 16
+OMP_NUM_THREADS=1 python main.py --env-name "KungFuMaster-v0" --algo a3c --num-processes 4
 ```
 
-This code runs evaluation in a separate thread in addition to 16 processes.
 
-Now you can run tensorboard and watch it training.
+
+Note:
+Pytorch is still in beta and non recent version might have some problems.
+### Dashboard
+Logs are stored in `dblogs` directory, to watch agents learn run:
 
 ```
-tensorboard --logdir runs
+python dashboard.py --dbdir dblogs --env 'KungFuMaster-v0'
 ```
-
-Videos of a game is also saved every `--rec-every-nsteps`, you can check them in `checkpoints` directory.
-
+This will start a visdom server and show the last 2 run logs in KungFuMaster-v0 env.
+![](images/main2.jpg)
+![](images/ind2.jpg)
+[video](https://www.youtube.com/watch?v=T8AQm_OynW0)
 
 ### Dependencies
    * pytorch
    * torchvision
    * gym
    * sqlite3
-   * [tensorboard logger](https://github.com/TeamHG-Memex/tensorboard_logger)
-
-Note:
-Pytorch is still in beta and non recent version might have some problem.
-### Results
-___
-It seems "a3cff" has problem with slightly harder games as of now.
-(no_universe is a label for LSTM)
-##### Pong
-![](images/pongD_5dae352.png)
-![](images/breakoutD_5dae352.png)
+   * [visdom](https://github.com/facebookresearch/visdom)
 
 ### Credits
 
