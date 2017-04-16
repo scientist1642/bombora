@@ -5,7 +5,7 @@ My ongoing experiments in RL, originally based on [ikostrikov/pytorch-a3c](https
 
 ### Usage
 ```
-OMP_NUM_THREADS=1 python main.py --env-name "KungFuMaster-v0" --algo a3c --num-processes 4
+OMP_NUM_THREADS=1 python main.py --env-name "Pong-v0" --algo a3c --num-processes 4
 ```
 
 
@@ -16,11 +16,13 @@ Pytorch is still in beta and non recent version might have some problems.
 Logs are stored in `dblogs` directory, to watch agents learn run:
 
 ```
-python dashboard.py --dbdir dblogs --env 'KungFuMaster-v0'
+python dashboard.py --dbdir dblogs --env 'Pong-v0'
 ```
-This will start a visdom server and show the last 2 run logs in KungFuMaster-v0 env.
-![](images/main2.jpg)
-![](images/ind2.jpg)
+This will start a visdom server and show the last 2 run logs in Pong-v0 env.
+
+<img src="images/main2.jpg" width="700">
+<img src="images/ind2.jpg" width="700">
+
 [video](https://www.youtube.com/watch?v=T8AQm_OynW0)
 
 ### Dependencies

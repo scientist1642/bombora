@@ -160,7 +160,7 @@ def save_model(args, dblogger, model, glsteps, testnum):
                 'num_actions': args.num_actions,
                 'state_dict': tmpf.read()
                 }
-        if testnum == 0: # don't waste space
+        if testnum != 0: # don't waste space
             dblogger.log(data)
             logger.info('logged model on step {}'.format(glsteps))
 
