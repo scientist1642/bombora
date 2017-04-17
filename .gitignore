@@ -9,7 +9,6 @@ __pycache__/
 
 # logs
 runs/
-checkpoints/
 results/
 dblogs/
 dblogs_server/

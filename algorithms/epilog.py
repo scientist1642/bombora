@@ -27,6 +27,8 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
 
     model = Model(args.num_channels, args.num_actions)
 
+    trained_model = Model(args.num_channels, args.num_actions)
+
     if optimizer is None:
         optimizer = optim.Adam(shared_model.parameters(), lr=args.lr)
 
@@ -39,12 +41,20 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
     episode_length = 0
     episode_count = 0 
     
+    # Load trained model
+    mst_model = Model(args.num_channels, args.num_actions)
+    mst_model.load_state_dict(torch.load(args.trained_params))
+
     while True:
 
         values = []
         log_probs = []
         rewards = []
         entropies = []
+        
+        mst_values = []  # Master values
+        mst_rewards = []
+        mst_log_probs = []
         
         if gl_step_count.get_value() >= args.max_step_count:
             logger.info('Maxiumum step count {} reached..'.format(args.max_step_count))
@@ -58,32 +68,41 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
         if done:
             cx = Variable(torch.zeros(1, 256))
             hx = Variable(torch.zeros(1, 256))
+            mst_cx = Variable(torch.zeros(1, 256))
+            mst_hx = Variable(torch.zeros(1, 256))
         else:
             cx = Variable(cx.data)
             hx = Variable(hx.data)
-
+            mst_cx = Variable(cx.data)
+            mst_hx = Variable(hx.data)
 
         for step in range(args.num_steps):
             value, logit, (hx, cx) = model(
                 (Variable(state.unsqueeze(0)), (hx, cx)))
-            prob = F.softmax(logit)
-            log_prob = F.log_softmax(logit)
+            prob, log_prob = F.softmax(logit), F.log_softmax(logit)
             entropy = -(log_prob * prob).sum(1)
             entropies.append(entropy)
             
             action = prob.multinomial().data
             log_prob = log_prob.gather(1, Variable(action))
 
-            state, reward, done, _ = env.step(action[0,0])
+            gym_state, reward, done, _ = env.step(action[0,0])
             done = done or episode_length >= args.max_episode_length
             reward = max(min(reward, 1), -1)
+
+            ## Master
+            mst_value, mst_logit, (mst_hx, mst_cx) = mst_model(
+                (Variable(state.unsqueeze(0)), (mst_hx, mst_cx)))
+            #mst_prob = F.softmax(logit)
+            #mst_action = prob.max(1)[1].data[0, 0]
+            mst_values.append(mst_value)
 
             if done:
                 episode_length = 0
                 episode_count += 1
                 state = env.reset()
 
-            state = torch.from_numpy(state)
+            state = torch.from_numpy(gym_state)
             values.append(value)
             log_probs.append(log_prob)
             rewards.append(reward)
@@ -110,12 +129,12 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
             value_loss = value_loss + 0.5 * advantage.pow(2)
 
             # Generalized Advantage Estimataion
-            delta_t = rewards[i] + args.gamma * \
-                values[i + 1].data - values[i].data
-            gae = gae * args.gamma * args.tau + delta_t
-
+            #delta_t = rewards[i] + args.gamma * \
+            #    values[i + 1].data - values[i].data
+            #gae = gae * args.gamma * args.tau + delta_t
+            mst_advantage = R.data[0,0] - mst_values[i].data[0,0]
             policy_loss = policy_loss - \
-                log_probs[i] * Variable(gae) - 0.01 * entropies[i]
+                log_probs[i] * mst_advantage - 0.01 * entropies[i]
 
         optimizer.zero_grad()
 
