@@ -23,6 +23,7 @@ evttypes = {
             'glsteps': int,
             'avgscore': float,
             'avglength': float,
+            'avgentropy': float,
             'stdscore': float,
             'tpassed': float
             }, required=True),

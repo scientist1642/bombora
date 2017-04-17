@@ -137,6 +137,9 @@ def _plot_simple_test(data, cache, viz, wins):
     steps = data['glsteps']
     _update_line(steps, data['avgscore'], viz, wins, 
             title='Average Score', legend=viz.env)
+    if 'avgentropy' in data:
+        _update_line(steps, data['avgentropy'], viz, wins, 
+                title='Average Entropy', legend=viz.env)
 
                     
 def render_agent_video(data, cache):
@@ -312,6 +315,9 @@ class Dashboard:
                         title='Average Std', legend=envname)
                 _update_line(steps, data['avglength'], mainviz, mainwins, 
                         title='Average Game Length', legend=envname)
+                if 'avgentropy' in data: 
+                    _update_line(steps, data['avgentropy'], mainviz, mainwins, 
+                            title='Average Entropy', legend=envname)
                 #_update_line(steps, steps / data['tpassed'], mainviz, mainwins, 
                 #        title='Steps / Second', legend=envname)
                 self.speed_bars[envname] = (steps / data['tpassed'])

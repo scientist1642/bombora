@@ -156,6 +156,8 @@ if __name__ == '__main__':
             p.join()
     else: ## debug is enabled
         # run only one process in a main, easier to debug
+        args.num_test_episodes = 1
+        args.descr = 'debug'
         args.max_step_count = 1000 # test both train and debug
         train(0, args, shared_model, Model, make_env, shared_stepcount, optimizer)
         args.max_step_count += 1000 # needed to perform test

@@ -94,6 +94,7 @@ def test_simple(args, dblogger, model, env, glsteps, start_time):
     logger.info('Doing simple test on step {}'.format(glsteps))
     eprewards = []
     eplengths = []
+    epentropies = []
     env.reset()
     for episode in range(args.num_test_episodes):
         state = torch.from_numpy(env.reset())
@@ -103,6 +104,8 @@ def test_simple(args, dblogger, model, env, glsteps, start_time):
         epreward = 0
         eplength = 1
         actions = deque(maxlen=100)
+        entropies = []
+        # TODO writing x.data.numpy()[0,0]
         while True: # episode is running
             value, logit, (hx, cx) = model(
                     (Variable(state.unsqueeze(0), volatile=True), (hx, cx)))
@@ -111,6 +114,10 @@ def test_simple(args, dblogger, model, env, glsteps, start_time):
             hx = Variable(hx.data, volatile=True)
 
             prob = F.softmax(logit)
+            log_prob = F.log_softmax(logit)
+            entropy = -(log_prob * prob).sum()
+            entropies.append(entropy.data[0])
+            
             action = prob.max(1)[1].data.numpy()
             # a quick hack to prevent the agent from stucking
             actions.append(action[0, 0])
@@ -125,9 +132,9 @@ def test_simple(args, dblogger, model, env, glsteps, start_time):
             # monitor shouldn't quit during recording
             if done:
                 break
-
         eprewards.append(epreward)
         eplengths.append(eplength)
+        epentropies.append(float(np.average(entropies)))
     
     env.close()
 
@@ -140,6 +147,7 @@ def test_simple(args, dblogger, model, env, glsteps, start_time):
             'avgscore': np.average(eprewards),
             'stdscore': np.std(eprewards),
             'avglength': np.average(eplengths),
+            'avgentropy': np.average(epentropies),
             'tpassed' : passed_time,
             }
 
