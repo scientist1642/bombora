@@ -41,6 +41,9 @@ parser.add_argument('--max-events', type=int, default=10000000,
 
 parser.add_argument('-n', '--env-count', type=int, default=2,
                     help='number of last db logs to read')
+
+parser.add_argument('-s', '--max-steps', type=int, default=100000000,
+                    help='max step counts to plot')
 class Mytemplates:
     List =  Template('''
           <ul>
@@ -390,6 +393,8 @@ class Dashboard:
         for db, cache, viz, wins in self.tabs:
             try:
                 idd, evtname, data, timestamp = next(db)
+                if 'glsteps' in data and data['glsteps'] >= args.max_steps:
+                    continue
                 data['idd'] = idd
                 self._update_env(data, cache, viz, wins, self.args.heavy_ids)
                 env_datas.append((viz.env, data))
@@ -398,7 +403,7 @@ class Dashboard:
                 pass
         
         # now update main
-        time.sleep(0.2)
+        # time.sleep(0.2)
         mainviz, mainwins = self.mainviz, self.mainwins
         self._plot_main(env_datas, mainviz, mainwins)
         
