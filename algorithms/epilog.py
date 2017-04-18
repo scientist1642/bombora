@@ -125,14 +125,15 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
         gae = torch.zeros(1, 1)
         for i in reversed(range(len(rewards))):
             R = args.gamma * R + rewards[i]
-            advantage = R - values[i]
+            mst_advantage = R.data[0,0] - mst_values[i].data[0,0]
+            #advantage = R - values[i]
+            advantage = R - mst_advantage
             value_loss = value_loss + 0.5 * advantage.pow(2)
 
             # Generalized Advantage Estimataion
             #delta_t = rewards[i] + args.gamma * \
             #    values[i + 1].data - values[i].data
             #gae = gae * args.gamma * args.tau + delta_t
-            mst_advantage = R.data[0,0] - mst_values[i].data[0,0]
             policy_loss = policy_loss - \
                 log_probs[i] * mst_advantage - 0.01 * entropies[i]
 
