@@ -44,6 +44,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
     # Load trained model
     mst_model = Model(args.num_channels, args.num_actions)
     mst_model.load_state_dict(torch.load(args.trained_params))
+    mst_model.eval()
 
     while True:
 
@@ -127,8 +128,8 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
             R = args.gamma * R + rewards[i]
             mst_advantage = R.data[0,0] - mst_values[i].data[0,0]
             #advantage = R - values[i]
-            advantage = R - mst_advantage
-            value_loss = value_loss + 0.5 * advantage.pow(2)
+            #advantage = R - mst_values[i].data[0,0]
+            value_loss = value_loss + 0.5 * pow(mst_advantage, 2)
 
             # Generalized Advantage Estimataion
             #delta_t = rewards[i] + args.gamma * \
