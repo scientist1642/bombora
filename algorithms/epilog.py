@@ -130,7 +130,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
             mst_advantage = R.data[0,0] - mst_values[i].data[0,0]
             advantage = R - values[i]
             #advantage = R - mst_values[i].data[0,0]
-            alpha = 1
+            alpha = args.epilog_alpha
             common_advantage = alpha * advantage + (1 - alpha) * mst_advantage
             value_loss = value_loss + 0.5 * pow(common_advantage, 2)
             # Generalized Advantage Estimataion

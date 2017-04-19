@@ -66,8 +66,11 @@ parser.add_argument('--save-model-every', type=int, default=60,
                     help='interval in minutes to save model params')
 parser.add_argument('--source-url', default='',
                     help='url to browse current source code')
+
 parser.add_argument('--trained-params', default='',
                     help='path to statedict params for epilog')
+parser.add_argument('--epilog-alpha', type=int, default=1,
+                    help='1-typical advantage, 0 master advantage')
 
 def setup_loggings(args):
     ''' Setup args and db logging '''
