@@ -125,18 +125,21 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
         R = Variable(R)
         gae = torch.zeros(1, 1)
         for i in reversed(range(len(rewards))):
+            #import ipdb; ipdb.set_trace()
             R = args.gamma * R + rewards[i]
             mst_advantage = R.data[0,0] - mst_values[i].data[0,0]
-            #advantage = R - values[i]
+            advantage = R - values[i]
             #advantage = R - mst_values[i].data[0,0]
-            value_loss = value_loss + 0.5 * pow(mst_advantage, 2)
+            alpha = 0.7
+            common_advantage = alpha * advantage + (1 - alpha) * mst_advantage
+            value_loss = value_loss + 0.5 * pow(common_advantage, 2)
 
             # Generalized Advantage Estimataion
             #delta_t = rewards[i] + args.gamma * \
             #    values[i + 1].data - values[i].data
             #gae = gae * args.gamma * args.tau + delta_t
             policy_loss = policy_loss - \
-                log_probs[i] * mst_advantage - 0.01 * entropies[i]
+                log_probs[i] * common_advantage - 0.01 * entropies[i]
 
         optimizer.zero_grad()
 
