@@ -69,7 +69,7 @@ parser.add_argument('--source-url', default='',
 
 parser.add_argument('--trained-params', default='',
                     help='path to statedict params for epilog')
-parser.add_argument('--epilog-alpha', type=int, default=1,
+parser.add_argument('--epilog-alpha', type=float, default=1,
                     help='1-typical advantage, 0 master advantage')
 
 def setup_loggings(args):
