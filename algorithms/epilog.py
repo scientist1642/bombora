@@ -74,8 +74,8 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
         else:
             cx = Variable(cx.data)
             hx = Variable(hx.data)
-            mst_cx = Variable(cx.data)
-            mst_hx = Variable(hx.data)
+            mst_cx = Variable(mst_cx.data)
+            mst_hx = Variable(mst_hx.data)
 
         for step in range(args.num_steps):
             value, logit, (hx, cx) = model(
@@ -130,10 +130,9 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
             mst_advantage = R.data[0,0] - mst_values[i].data[0,0]
             advantage = R - values[i]
             #advantage = R - mst_values[i].data[0,0]
-            alpha = 0.7
+            alpha = 1
             common_advantage = alpha * advantage + (1 - alpha) * mst_advantage
             value_loss = value_loss + 0.5 * pow(common_advantage, 2)
-
             # Generalized Advantage Estimataion
             #delta_t = rewards[i] + args.gamma * \
             #    values[i + 1].data - values[i].data
