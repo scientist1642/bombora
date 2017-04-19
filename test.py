@@ -208,7 +208,7 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
         if testnum  % args.test_simple_every == 0:
             test_simple(args, dblogger, model, env, glsteps, start_time)
         
-        if testnum % args.test_heavy_every == 0:
+        if (testnum+1) % args.test_heavy_every == 0:
             test_heavy(args, dblogger, model, make_env, glsteps)
 
         if testnum % args.save_model_every == 0:
