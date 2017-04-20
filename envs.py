@@ -17,6 +17,61 @@ def atari_env(env_id, stacked=1, side=None):
         env = MyStackedFrames(env, stacked)
     return env
 
+def cartpole_env(env_id, stacked=1, side=None):
+    # cartpole pixel input env
+    # NOTE Not used now
+    env = gym.make(env_id).unwrapped
+    #low, high = env.observation_space.low, env.observation_space.high 
+    #box = Box(np.tile(low, (stacked, 1)), np.tile(high, (stacked, 1)))
+    #import ipdb; ipdb.set_trace()
+    box = Box(0.0, 1.0, [stacked, side, side])
+    env = CartPoleScreen(env, side, box)
+    env = MyNormalizedEnv(env)
+    env = MyStackedFrames(env, stacked)
+    return env
+
+
+class CartPoleScreen(gym.ObservationWrapper):
+    # Get cropped cartpole screen
+    def __init__(self, env, side, box):
+        super(CartPoleScreen, self).__init__(env)
+        self.screen_width = 600
+        self.observation_space = box
+        self.side = side
+
+    def _observation(self, observation):
+        # throw away observation and return screen itself
+        frame = self.env.render(mode='rgb_array')
+        view_width = 160
+        cart_location = self.get_cart_location()
+        if cart_location < view_width // 2:
+            slice_range = slice(view_width)
+        elif cart_location > (self.screen_width - view_width // 2):
+            slice_range = slice(-view_width, None)
+        else:
+            slice_range = slice(cart_location - view_width // 2,
+                                cart_location + view_width // 2)
+
+        frame = frame[160:320, slice_range, :]
+        
+        if self.side == 42:
+            # Resize by half, then down to 42x42 (essentially mipmapping). If
+            # we resize directly we lose pixels that, when mapped to 42x42,
+            # aren't close enough to the pixel boundary.
+            frame = cv2.resize(frame, (80, 80))
+            frame = cv2.resize(frame, (42, 42))
+        else:
+            frame = cv2.resize(frame, (84, 84))
+        frame = frame.mean(2)
+        frame = frame.astype(np.float32)
+        frame *= (1.0 / 255.0)
+        return frame
+    
+    def get_cart_location(self):
+        world_width = self.env.x_threshold * 2
+        scale = self.screen_width / world_width
+        return int(self.env.state[0] * scale + self.screen_width / 2.0)  # MIDDLE OF CART
+
 
 class MyAtariRescale(gym.ObservationWrapper):
 
@@ -42,9 +97,11 @@ class MyAtariRescale(gym.ObservationWrapper):
         return frame
 
 class MyStackedFrames(gym.Wrapper):
-    def __init__(self, env, stacked):
+    def __init__(self, env, stacked, box=None):
         super(MyStackedFrames, self).__init__(env)
         self.stacked = stacked
+        if box:
+            self.observation_space  = box
 
     def _reset(self):
         observation = self.env.reset()
@@ -76,6 +133,4 @@ class MyNormalizedEnv(gym.ObservationWrapper):
         unbiased_std = self.state_std / (1 - pow(self.alpha, self.num_steps))
         ret = (observation - unbiased_mean) / (unbiased_std + 1e-8)
         return np.expand_dims(ret, axis=0)
-
-
 

@@ -375,7 +375,8 @@ class Dashboard:
             import gym
             gym_env = gym.make(data['args']['env_name'])
             gym_env.reset()
-            self.action_names = gym_env.env.get_action_meanings()
+            if hasattr(gym_env.env, 'get_action_meanings'):
+                self.action_names = gym_env.env.get_action_meanings()
             gym_env.close()
         elif evtname =='SimpleTest':
             _plot_simple_test(data, cache, viz, wins)

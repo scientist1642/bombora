@@ -34,8 +34,10 @@ def weights_init(m):
 
 class Net(torch.nn.Module):
 
-    def __init__(self, num_channels, num_actions):
+    def __init__(self, input_dims, num_actions):
+        ''' Input deimensions without batch '''
         super(Net, self).__init__()
+        num_channels = input_dims[0]
         self.conv1 = nn.Conv2d(num_channels, 16, 8, stride=4, padding=4)
         self.conv2 = nn.Conv2d(16, 32, 4, stride=2, padding=2)
 

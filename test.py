@@ -164,7 +164,7 @@ def save_model(args, dblogger, model, glsteps, testnum):
                 'tpassed':testnum * 60.,
                 'algo': args.algo,
                 'arch': args.arch,
-                'num_channels': args.num_channels,
+                'input_shape': args.input_shape,
                 'num_actions': args.num_actions,
                 'state_dict': tmpf.read()
                 }
@@ -179,19 +179,23 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
 
     env = make_env()
     env.seed(args.seed + rank)
-    model = Model(args.num_channels, args.num_actions)
+    model = Model(args.input_shape, args.num_actions)
     model.eval()
     start_time = time.time()
     
     # log experiment args
-    # GET action names TODO see why this is needed
-    orig_env = env
-    while not hasattr(orig_env, 'get_action_meanings'):
-        orig_env = orig_env.env
-
+    try:
+        # GET action names TODO see why this is needed
+        orig_env = env
+        while not hasattr(orig_env, 'get_action_meanings'):
+            orig_env = orig_env.env
+        action_names = orig_env.get_action_meanings()
+    except AttributeError:
+        action_names = ['NAN'] * env.action_space.n
+    
     dblogger.log({'evtname':'ExperimentArgs', 
         'args': vars(args),
-        'action_names':orig_env.get_action_meanings()})
+        'action_names':action_names})
 
     
     testnum = 0

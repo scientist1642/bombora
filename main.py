@@ -108,7 +108,9 @@ def get_functions(args):
     from test import test
     algo_module = importlib.import_module('algorithms.{}'.format(args.algo))
     model_module = importlib.import_module('models.{}'.format(args.arch))
-    if args.arch == 'lstm_universe':
+    if args.env_name == 'CartPole-v0':
+        make_env = lambda: envs.cartpole_env(args.env_name, side=42, stacked=1)
+    elif args.arch == 'lstm_universe':
         make_env = lambda: envs.atari_env(args.env_name, side=42, stacked=1)
     elif args.arch == 'lstm_nature':
         make_env = lambda: envs.atari_env(args.env_name, side=84, stacked=1)
@@ -125,11 +127,11 @@ if __name__ == '__main__':
     train, test, Model, make_env = get_functions(args) 
     
     env = make_env()
-    args.num_channels = env.observation_space.shape[0]
+    args.input_shape = env.observation_space.shape
     args.num_actions = env.action_space.n
     env.close()
     setup_loggings(args)
-    shared_model = Model(args.num_channels, args.num_actions)
+    shared_model = Model(args.input_shape, args.num_actions)
     shared_model.share_memory()
 
     if args.no_shared:

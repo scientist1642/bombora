@@ -25,7 +25,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
     env = make_env()
     env.seed(args.seed + rank)
 
-    model = Model(args.num_channels, args.num_actions)
+    model = Model(args.input_shape, args.num_actions)
 
     if optimizer is None:
         optimizer = optim.Adam(shared_model.parameters(), lr=args.lr)
@@ -72,8 +72,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
             entropies.append(entropy)
             action = prob.multinomial().data
             log_prob = log_prob.gather(1, Variable(action))
-
-            state, reward, done, _ = env.step(action.numpy())
+            state, reward, done, _ = env.step(action[0,0])
             done = done or episode_length >= args.max_episode_length
             reward = max(min(reward, 1), -1)
 
