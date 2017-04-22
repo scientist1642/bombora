@@ -54,11 +54,11 @@ parser.add_argument('-d', '--descr', default='nod',
                     help='Short description of the run params used for name')
 parser.add_argument('--algo', default='a3c', dest='algo', action='store', choices=['a3c', 'origins', 'epilog'],
                     help='Algorithm to use')
-parser.add_argument('--arch', default='lstm_universe', dest='arch', action='store', choices=['lstm_universe', 'lstm_nature'],
+parser.add_argument('--arch', default='lstm_universe', dest='arch', action='store', choices=['lstm_universe', 'lstm_nature', 'ff_basic'],
                     help='Architecture for the algo')
 parser.add_argument('--num-test-episodes', type=int, default=3, 
                     help='number of simple test episodes to run')
-parser.add_argument('--test-simple-every', type=int, default=2,
+parser.add_argument('--test-simple-every', type=int, default=1,
                     help='interval in minutes beteween simple test')
 parser.add_argument('--test-heavy-every', type=int, default=30,
                     help='interval in minutes beteween heavy test')
@@ -109,7 +109,7 @@ def get_functions(args):
     algo_module = importlib.import_module('algorithms.{}'.format(args.algo))
     model_module = importlib.import_module('models.{}'.format(args.arch))
     if args.env_name == 'CartPole-v0':
-        make_env = lambda: envs.cartpole_env(args.env_name, side=42, stacked=1)
+        make_env = lambda: envs.basic_env(args.env_name, stacked=1)
     elif args.arch == 'lstm_universe':
         make_env = lambda: envs.atari_env(args.env_name, side=42, stacked=1)
     elif args.arch == 'lstm_nature':
@@ -128,7 +128,9 @@ if __name__ == '__main__':
     
     env = make_env()
     args.input_shape = env.observation_space.shape
+    #import ipdb; ipdb.set_trace()
     args.num_actions = env.action_space.n
+    #args.num_actions = 3
     env.close()
     setup_loggings(args)
     shared_model = Model(args.input_shape, args.num_actions)

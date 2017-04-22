@@ -371,13 +371,14 @@ class Dashboard:
         if evtname == 'ExperimentArgs':
             _plot_args(data, cache, viz, wins)
             self.experiment_args = data
-            # TODO pass it from data 
-            import gym
-            gym_env = gym.make(data['args']['env_name'])
-            gym_env.reset()
-            if hasattr(gym_env.env, 'get_action_meanings'):
-                self.action_names = gym_env.env.get_action_meanings()
-            gym_env.close()
+            if 'action_names' in data:
+                self.action_names = data['action_names']
+            else:
+                gym_env = gym.make(data['args']['env_name'])
+                gym_env.reset()
+                if hasattr(gym_env.env, 'get_action_meanings'):
+                    self.action_names = gym_env.env.get_action_meanings()
+                gym_env.close()
         elif evtname =='SimpleTest':
             _plot_simple_test(data, cache, viz, wins)
         elif evtname == 'HeavyTest':

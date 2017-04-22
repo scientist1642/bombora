@@ -17,6 +17,15 @@ def atari_env(env_id, stacked=1, side=None):
         env = MyStackedFrames(env, stacked)
     return env
 
+def basic_env(env_id, stacked=1):
+    # Basic env for testing like cartpole with original observation
+    env = gym.make(env_id).unwrapped
+    low, high = env.observation_space.low, env.observation_space.high 
+    box = Box(np.tile(low, (stacked, 1)), np.tile(high, (stacked, 1)))
+    env = MyNormalizedEnv(env)
+    env = MyStackedFrames(env, stacked, box=box)
+    return env
+
 def cartpole_env(env_id, stacked=1, side=None):
     # cartpole pixel input env
     # NOTE Not used now
@@ -123,6 +132,7 @@ class MyNormalizedEnv(gym.ObservationWrapper):
         self.num_steps = 0
 
     def _observation(self, observation):
+        observation = observation.astype(np.float32)
         self.num_steps += 1
         self.state_mean = self.state_mean * self.alpha + \
             observation.mean() * (1 - self.alpha)
