@@ -374,6 +374,7 @@ class Dashboard:
             if 'action_names' in data:
                 self.action_names = data['action_names']
             else:
+                import gym
                 gym_env = gym.make(data['args']['env_name'])
                 gym_env.reset()
                 if hasattr(gym_env.env, 'get_action_meanings'):
