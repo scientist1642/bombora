@@ -25,9 +25,8 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
     env = make_env()
     env.seed(args.seed + rank)
 
-    model = Model(args.num_channels, args.num_actions)
+    model = Model(args.input_shape, args.num_actions)
 
-    trained_model = Model(args.num_channels, args.num_actions)
 
     if optimizer is None:
         optimizer = optim.Adam(shared_model.parameters(), lr=args.lr)
@@ -42,7 +41,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
     episode_count = 0 
     
     # Load trained model
-    mst_model = Model(args.num_channels, args.num_actions)
+    mst_model = Model(args.input_shape, args.num_actions)
     mst_model.load_state_dict(torch.load(args.trained_params))
     mst_model.eval()
 
