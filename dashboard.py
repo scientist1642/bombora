@@ -274,6 +274,7 @@ class Dashboard:
         self.runlist = []
         self.interval = interval
         self.args = args
+        self.agent_frames = []
         
         # go through each requested env folder, find all sqlite files, take last one
         if len(names) == 0:
@@ -309,7 +310,6 @@ class Dashboard:
         # unfortunatelly no update trace for barplot we should keep it ourselves
 
         for envname, data in env_datas:
-            #import ipdb; ipdb.set_trace()
             if data['evtname'] == 'SimpleTest':
                 steps = data['glsteps']
                 _update_line(steps, data['avgscore'], mainviz, mainwins, 
@@ -352,10 +352,8 @@ class Dashboard:
                 for act in chosen_actions:
                     X[i, act] += 1
             # normalize 
-            #import ipdb; ipdb.set_trace()
             denom = X.sum(axis=1) / 100
             X = X / np.expand_dims(denom, 1)
-            #import ipdb; ipdb.set_trace() 
             _update_bar(X, mainviz, mainwins, rownames, 
                     title='Used Actions',legend=legend)
 
@@ -383,9 +381,17 @@ class Dashboard:
         elif evtname =='SimpleTest':
             _plot_simple_test(data, cache, viz, wins)
         elif evtname == 'HeavyTest':
+            self.agent_frames.append(np.moveaxis(data['states'], 1, 3).squeeze())
+            if len(self.agent_frames) == 12 and False:
+                #TODO remove not needed
+                import ipdb; ipdb.set_trace()
+                import pickle
+                ss = pickle.dumps(self.agent_frames, protocol=2)
+                with open('rara','wb') as f: f.write(ss)
             _plot_heavy_test(data, cache, viz, wins, heavy_ids)
         else:
             logging.warning('Unknown tuple instance {}'.format(type(data).__name__))
+
     def update_envs(self):
         ''' update all visdom envs '''
         #pool = multiprocessing.Pool(3)
