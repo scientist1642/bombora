@@ -41,9 +41,9 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
     episode_count = 0 
     
     # Load trained model
-    mst_model = Model(args.input_shape, args.num_actions)
-    mst_model.load_state_dict(torch.load(args.trained_params))
-    mst_model.eval()
+    #mst_model = Model(args.input_shape, args.num_actions)
+    #mst_model.load_state_dict(torch.load(args.trained_params))
+    #mst_model.eval()
 
     while True:
 
@@ -52,9 +52,9 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
         rewards = []
         entropies = []
         
-        mst_values = []  # Master values
-        mst_rewards = []
-        mst_log_probs = []
+        #mst_values = []  # Master values
+        #mst_rewards = []
+        #mst_log_probs = []
         
         if gl_step_count.get_value() >= args.max_step_count:
             logger.info('Maxiumum step count {} reached..'.format(args.max_step_count))
@@ -68,13 +68,13 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
         if done:
             cx = Variable(torch.zeros(1, 256))
             hx = Variable(torch.zeros(1, 256))
-            mst_cx = Variable(torch.zeros(1, 256))
-            mst_hx = Variable(torch.zeros(1, 256))
+            #mst_cx = Variable(torch.zeros(1, 256))
+            #mst_hx = Variable(torch.zeros(1, 256))
         else:
             cx = Variable(cx.data)
             hx = Variable(hx.data)
-            mst_cx = Variable(mst_cx.data)
-            mst_hx = Variable(mst_hx.data)
+            #mst_cx = Variable(mst_cx.data)
+            #mst_hx = Variable(mst_hx.data)
 
         for step in range(args.num_steps):
             value, logit, (hx, cx) = model(
@@ -91,11 +91,11 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
             reward = max(min(reward, 1), -1)
 
             ## Master
-            mst_value, mst_logit, (mst_hx, mst_cx) = mst_model(
+            #mst_value, mst_logit, (mst_hx, mst_cx) = mst_model(
                 (Variable(state.unsqueeze(0)), (mst_hx, mst_cx)))
             #mst_prob = F.softmax(logit)
             #mst_action = prob.max(1)[1].data[0, 0]
-            mst_values.append(mst_value)
+            #mst_values.append(mst_value)
 
             if done:
                 episode_length = 0
@@ -134,7 +134,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
             gae = gae * args.gamma * args.tau + delta_t
 
             policy_loss = policy_loss - \
-                log_probs[i] * common_advantage - 0.01 * entropies[i]
+                log_probs[i] * common_advantage.data[0,0] - 0.01 * entropies[i]
             continue
 
 
