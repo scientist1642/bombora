@@ -92,7 +92,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
 
             ## Master
             #mst_value, mst_logit, (mst_hx, mst_cx) = mst_model(
-                (Variable(state.unsqueeze(0)), (mst_hx, mst_cx)))
+                #(Variable(state.unsqueeze(0)), (mst_hx, mst_cx)))
             #mst_prob = F.softmax(logit)
             #mst_action = prob.max(1)[1].data[0, 0]
             #mst_values.append(mst_value)
