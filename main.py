@@ -67,6 +67,8 @@ parser.add_argument('--save-model-every', type=int, default=60,
 parser.add_argument('--source-url', default='',
                     help='url to browse current source code')
 
+parser.add_argument('--hidden-size', type=int, default=3, 
+                    help='number of simple test episodes to run')
 parser.add_argument('--trained-params', default='',
                     help='path to statedict params for epilog')
 parser.add_argument('--epilog-alpha', type=float, default=1,
@@ -138,7 +140,7 @@ if __name__ == '__main__':
     #args.num_actions = 3
     env.close()
     setup_loggings(args)
-    shared_model = Model(args.input_shape, args.num_actions)
+    shared_model = Model(args.input_shape, args.hidden_size, args.num_actions)
     shared_model.share_memory()
 
     if args.no_shared:

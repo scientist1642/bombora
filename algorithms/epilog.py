@@ -25,7 +25,7 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
     env = make_env()
     env.seed(args.seed + rank)
 
-    model = Model(args.input_shape, args.num_actions)
+    model = Model(args.input_shape, args.hidden_size, args.num_actions)
 
 
     if optimizer is None:
@@ -66,8 +66,8 @@ def train(rank, args, shared_model, Model, make_env, gl_step_count, optimizer=No
         # Sync with the shared model
         model.load_state_dict(shared_model.state_dict())
         if done:
-            cx = Variable(torch.zeros(1, 256))
-            hx = Variable(torch.zeros(1, 256))
+            cx = Variable(torch.zeros(1, model.hidden_size))
+            hx = Variable(torch.zeros(1, model.hidden_size))
             #mst_cx = Variable(torch.zeros(1, 256))
             #mst_hx = Variable(torch.zeros(1, 256))
         else:

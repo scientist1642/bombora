@@ -34,19 +34,20 @@ def weights_init(m):
 
 class Net(torch.nn.Module):
 
-    def __init__(self, input_shape, num_actions):
+    def __init__(self, input_shape, hidden_size, num_actions):
         super(Net, self).__init__()
+        self.hidden_size = hidden_size
         num_channels = input_shape[0]
         self.conv1 = nn.Conv2d(num_channels, 32, 3, stride=2, padding=1)
         self.conv2 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
         self.conv3 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
         self.conv4 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
 
-        self.lstm = nn.LSTMCell(32 * 3 * 3, 256)
+        self.lstm = nn.LSTMCell(32 * 3 * 3, self.hidden_size)
 
         num_outputs = num_actions
-        self.critic_linear = nn.Linear(256, 1)
-        self.actor_linear = nn.Linear(256, num_outputs)
+        self.critic_linear = nn.Linear(self.hidden_size, 1)
+        self.actor_linear = nn.Linear(self.hidden_size, num_outputs)
         self.apply(weights_init)
         self.actor_linear.weight.data = normalized_columns_initializer(
             self.actor_linear.weight.data, 0.01)

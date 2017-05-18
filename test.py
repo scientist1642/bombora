@@ -30,8 +30,8 @@ def test_heavy(args, dblogger, model, make_env,  glsteps):
             video_callable=lambda x: True, write_upon_reset=False)
 
     state = torch.from_numpy(env.reset())
-    cx = Variable(torch.zeros(1, 256), volatile=True)
-    hx = Variable(torch.zeros(1, 256), volatile=True)
+    cx = Variable(torch.zeros(1, model.hidden_size), volatile=True)
+    hx = Variable(torch.zeros(1, model.hidden_size), volatile=True)
      
     epreward = 0
     eplength = 1
@@ -98,8 +98,8 @@ def test_simple(args, dblogger, model, env, glsteps, start_time):
     env.reset()
     for episode in range(args.num_test_episodes):
         state = torch.from_numpy(env.reset())
-        cx = Variable(torch.zeros(1, 256), volatile=True)
-        hx = Variable(torch.zeros(1, 256), volatile=True)
+        cx = Variable(torch.zeros(1, model.hidden_size), volatile=True)
+        hx = Variable(torch.zeros(1, model.hidden_size), volatile=True)
         
         epreward = 0
         eplength = 1
@@ -179,7 +179,7 @@ def test(rank, args, shared_model, Model, make_env, shared_stepcount):
 
     env = make_env()
     env.seed(args.seed + rank)
-    model = Model(args.input_shape, args.num_actions)
+    model = Model(args.input_shape, args.hidden_size, args.num_actions)
     model.eval()
     start_time = time.time()
     
