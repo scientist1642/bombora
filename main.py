@@ -67,12 +67,16 @@ parser.add_argument('--save-model-every', type=int, default=60,
 parser.add_argument('--source-url', default='',
                     help='url to browse current source code')
 
-parser.add_argument('--hidden-size', type=int, default=3, 
+parser.add_argument('--hidden-size', type=int, default=64, 
                     help='number of simple test episodes to run')
 parser.add_argument('--trained-params', default='',
                     help='path to statedict params for epilog')
 parser.add_argument('--epilog-alpha', type=float, default=1,
                     help='1-typical advantage, 0 master advantage')
+parser.add_argument('--pyro-uri', default='',
+                    help='Pyro uri to work with fais')
+parser.add_argument('--episodic-every', type=int, default=50,
+                    help='in how many steps episodic action is taken')
 
 def setup_loggings(args):
     ''' Setup args and db logging '''
